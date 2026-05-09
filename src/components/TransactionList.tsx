@@ -3,7 +3,7 @@ import { FileSpreadsheet, FileText, Trash2, Utensils, Car, Home, Zap, Heart, Sho
 import { Transaction } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
 import { format } from 'date-fns';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -44,12 +44,12 @@ const CATEGORY_ICONS: Record<string, any> = {
 };
 
 export default function TransactionList({ transactions, onDelete, onEdit, onExportAudit }: TransactionListProps) {
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     const wsData = transactions.map(t => ({
       Date: t.date,
       Type: t.type.toUpperCase(),
       Category: t.category,
-      'Work Status': t.workStatus || 'N/A',
+      Status: t.workStatus || 'N/A',
       Items: t.items?.map(i => {
         let details = `${i.category}($${i.amount})`;
         if (i.model) details += ` | Mod:${i.model}`;
@@ -80,10 +80,35 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
       ID_Number: t.customer?.idNumber || ''
     }));
 
-    const ws = XLSX.utils.json_to_sheet(wsData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Transactions");
-    XLSX.writeFile(wb, `Report_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Transactions');
+
+    // Define columns
+    if (wsData.length > 0) {
+      worksheet.columns = Object.keys(wsData[0]).map(key => ({ 
+        header: key, 
+        key: key, 
+        width: 15 
+      }));
+      worksheet.addRows(wsData);
+
+      // Simple styling
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Report_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    }
   };
 
   const exportToPDF = () => {
