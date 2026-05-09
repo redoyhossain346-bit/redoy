@@ -2,6 +2,8 @@
   "name": "react-example",
   "private": true,
   "version": "0.0.0",
+  "description": "Professional Device Management Portal",
+  "author": "Management Team",
   "type": "module",
   "main": "main-electron.js",
   "scripts": {

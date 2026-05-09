@@ -23,10 +23,16 @@ function createWindow() {
   const isDev = !app.isPackaged;
   
   if (isDev) {
-    win.loadURL('http://localhost:3000');
+    win.loadURL('http://localhost:3000').catch(() => {
+      setTimeout(() => win.loadURL('http://localhost:3000'), 2000);
+    });
     win.webContents.openDevTools();
   } else {
-    win.loadFile(path.join(__dirname, 'dist/index.html'));
+    // Production: Load from the local dist folder
+    const indexPath = path.join(__dirname, 'dist', 'index.html');
+    win.loadFile(indexPath).catch(err => {
+      console.error('Failed to load local file:', err);
+    });
   }
 }
 

@@ -29,6 +29,7 @@ To generate the final `.exe` file for Windows:
 ```powershell
 npm run build:exe
 ```
+**Note**: The first time you run this, it will download about 150MB of Electron data (as seen in your screenshot). Please **do not close the terminal** until it finishes—it might take a few minutes depending on your internet speed.
 
 ### Where is the file?
 After the command finishes, look in the new folder named `release`.
