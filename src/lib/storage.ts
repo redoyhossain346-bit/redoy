@@ -9,9 +9,23 @@ const STORAGE_KEYS = {
   INVENTORY_CATEGORIES: 'glass_budget_inventory_categories',
 };
 
+const isStorageAvailable = () => {
+  try {
+    const test = '__storage_test__';
+    localStorage.setItem(test, test);
+    localStorage.removeItem(test);
+    return true;
+  } catch (e) {
+    return false;
+  }
+};
+
+const STORAGE_AVAILABLE = isStorageAvailable();
+
 export const storage = {
   getTransactions: (): Transaction[] => {
     try {
+      if (!STORAGE_AVAILABLE) return [];
       const data = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
       return data ? JSON.parse(data) : [];
     } catch (e) {
@@ -21,6 +35,7 @@ export const storage = {
   },
   saveTransactions: (transactions: Transaction[]) => {
     try {
+      if (!STORAGE_AVAILABLE) return;
       localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
     } catch (e) {
       console.error('Failed to save transactions', e);
@@ -28,6 +43,7 @@ export const storage = {
   },
   getUserProfile: (): UserProfile => {
     try {
+      if (!STORAGE_AVAILABLE) return { name: 'Guest' };
       const data = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
       return data ? JSON.parse(data) : { name: 'Guest' };
     } catch (e) {
@@ -37,6 +53,7 @@ export const storage = {
   },
   saveUserProfile: (profile: UserProfile) => {
     try {
+      if (!STORAGE_AVAILABLE) return;
       localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(profile));
     } catch (e) {
       console.error('Failed to save user profile', e);
@@ -44,6 +61,7 @@ export const storage = {
   },
   getAuditLogs: (): any[] => {
     try {
+      if (!STORAGE_AVAILABLE) return [];
       const data = localStorage.getItem(STORAGE_KEYS.AUDIT_LOGS);
       return data ? JSON.parse(data) : [];
     } catch (e) {
@@ -53,6 +71,7 @@ export const storage = {
   },
   saveAuditLogs: (logs: any[]) => {
     try {
+      if (!STORAGE_AVAILABLE) return;
       localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(logs));
     } catch (e) {
       console.error('Failed to save audit logs', e);
@@ -60,6 +79,7 @@ export const storage = {
   },
   getInventory: (): InventoryItem[] => {
     try {
+      if (!STORAGE_AVAILABLE) return [];
       const data = localStorage.getItem(STORAGE_KEYS.INVENTORY);
       return data ? JSON.parse(data) : [];
     } catch (e) {
@@ -69,6 +89,7 @@ export const storage = {
   },
   saveInventory: (inventory: InventoryItem[]) => {
     try {
+      if (!STORAGE_AVAILABLE) return;
       localStorage.setItem(STORAGE_KEYS.INVENTORY, JSON.stringify(inventory));
     } catch (e) {
       console.error('Failed to save inventory', e);
@@ -76,6 +97,7 @@ export const storage = {
   },
   getPartUsage: (): PartUsage[] => {
     try {
+      if (!STORAGE_AVAILABLE) return [];
       const data = localStorage.getItem(STORAGE_KEYS.PART_USAGE);
       return data ? JSON.parse(data) : [];
     } catch (e) {
@@ -85,6 +107,7 @@ export const storage = {
   },
   savePartUsage: (usage: PartUsage[]) => {
     try {
+      if (!STORAGE_AVAILABLE) return;
       localStorage.setItem(STORAGE_KEYS.PART_USAGE, JSON.stringify(usage));
     } catch (e) {
       console.error('Failed to save part usage', e);
@@ -92,6 +115,7 @@ export const storage = {
   },
   getInventoryCategories: (): string[] => {
     try {
+      if (!STORAGE_AVAILABLE) return ['Screens', 'Batteries', 'Charging Ports', 'Cameras', 'Back Glass', 'Accessories'];
       const data = localStorage.getItem(STORAGE_KEYS.INVENTORY_CATEGORIES);
       return data ? JSON.parse(data) : ['Screens', 'Batteries', 'Charging Ports', 'Cameras', 'Back Glass', 'Accessories'];
     } catch (e) {
@@ -101,6 +125,7 @@ export const storage = {
   },
   saveInventoryCategories: (categories: string[]) => {
     try {
+      if (!STORAGE_AVAILABLE) return;
       localStorage.setItem(STORAGE_KEYS.INVENTORY_CATEGORIES, JSON.stringify(categories));
     } catch (e) {
       console.error('Failed to save inventory categories', e);

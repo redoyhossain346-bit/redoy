@@ -32,12 +32,12 @@ After running `npm run dev`, you will see output like this:
 - Open your browser and go to **http://localhost:3000**.
 
 ## 4. Troubleshooting
-### Blank Page / Blue Screen
-- If you see a blank page, it is likely a JavaScript error. 
-- **Fix 1: Use Latest Code**: I have added fallbacks for `crypto.randomUUID` which often fails on local IP addresses.
-- **Fix 2: Clear Browser Storage**: Open DevTools (`F12`), go to the **Application** tab, select **Local Storage**, and clear it. Or try opening the link in an **Incognito/Private window**.
-- **Fix 3: Browser Console**: Press `F12` and click **Console**. If you see red errors, they will tell you exactly what is failing.
-- **Fix 4: Secure Context**: Some browser features require `HTTPS` or `localhost`. If `http://192.168.0.x` doesn't work, try running it directly on your computer using `http://localhost:3000`.
+### Blank Page / White Screen
+If the app shows a white screen, please try these steps in order:
+1. **Use Localhost**: Instead of `http://192.168.0.x`, use **`http://localhost:3000`** in the browser.
+2. **Incognito Mode**: Open a new **Incognito (Private)** window and try the link there. This ensures no old data is interfering.
+3. **Clear Browser Data**: Press `F12` to open DevTools, go to the **Application** tab, select **Clear Site Data** or manually clear **Local Storage**.
+4. **Browser Console**: Press `F12` and look at the **Console** tab. If there is a red error, please check the message. I have already added a fix that should show a detailed error on the screen if a crash happens.
 
 ### Security Warning (Not Secure)
 - Since the app runs locally on `http`, your browser might show a "Not Secure" warning. This is normal for local development. You can safely ignore it or click "Advanced" and "Proceed".
