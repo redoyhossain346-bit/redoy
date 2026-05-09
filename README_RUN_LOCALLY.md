@@ -32,12 +32,17 @@ After running `npm run dev`, you will see output like this:
 - Open your browser and go to **http://localhost:3000**.
 
 ## 4. Troubleshooting
+### Terminal Warnings (`npm warn deprecated`)
+Messages starting with `npm warn deprecated` are **normal** information about the libraries used by the app. 
+- You can safely ignore them.
+- They do **not** stop the app from working.
+- As long as you see "found 0 vulnerabilities", your setup is perfect.
+
 ### Blank Page / White Screen
-If the app shows a white screen, please try these steps in order:
-1. **Use Localhost**: Instead of `http://192.168.0.x`, use **`http://localhost:3000`** in the browser.
-2. **Incognito Mode**: Open a new **Incognito (Private)** window and try the link there. This ensures no old data is interfering.
-3. **Clear Browser Data**: Press `F12` to open DevTools, go to the **Application** tab, select **Clear Site Data** or manually clear **Local Storage**.
-4. **Browser Console**: Press `F12` and look at the **Console** tab. If there is a red error, please check the message. I have already added a fix that should show a detailed error on the screen if a crash happens.
+If the app shows a white screen:
+1. **Use Localhost**: Instead of `IP address`, type **`http://localhost:5173`** (or the link Vite gives you) directly into your browser.
+2. **Incognito Mode**: This is the best way to test—it clears old browser data.
+3. **Check Terminal**: Make sure you didn't close the terminal window where you ran `npm run dev`.
 
 ### Security Warning (Not Secure)
 - Since the app runs locally on `http`, your browser might show a "Not Secure" warning. This is normal for local development. You can safely ignore it or click "Advanced" and "Proceed".
