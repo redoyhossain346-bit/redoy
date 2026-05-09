@@ -45,26 +45,31 @@ export default function App() {
   const [categories, setCategories] = useState<string[]>([]);
 
   useEffect(() => {
-    const savedTransactions = storage.getTransactions();
-    const savedUser = storage.getUserProfile();
-    const savedLogs = storage.getAuditLogs();
-    const savedInventory = storage.getInventory();
-    const savedUsage = storage.getPartUsage();
-    const savedCategories = storage.getInventoryCategories();
-    const savedSession = sessionStorage.getItem('glass_budget_session');
-    const persistentSession = localStorage.getItem('keep_logged_in') === 'true';
-    
-    setTransactions(savedTransactions);
-    setUser(savedUser);
-    setAuditLogs(savedLogs);
-    setInventory(savedInventory);
-    setUsageHistory(savedUsage);
-    setCategories(savedCategories);
-    if (savedSession === 'active' || persistentSession) {
-      setIsLoggedIn(true);
-      setPasscodeModal(prev => ({ ...prev, isOpen: false }));
+    try {
+      const savedTransactions = storage.getTransactions();
+      const savedUser = storage.getUserProfile();
+      const savedLogs = storage.getAuditLogs();
+      const savedInventory = storage.getInventory();
+      const savedUsage = storage.getPartUsage();
+      const savedCategories = storage.getInventoryCategories();
+      const savedSession = sessionStorage.getItem('glass_budget_session');
+      const persistentSession = localStorage.getItem('keep_logged_in') === 'true';
+      
+      setTransactions(savedTransactions);
+      setUser(savedUser);
+      setAuditLogs(savedLogs);
+      setInventory(savedInventory);
+      setUsageHistory(savedUsage);
+      setCategories(savedCategories);
+      if (savedSession === 'active' || persistentSession) {
+        setIsLoggedIn(true);
+        setPasscodeModal(prev => ({ ...prev, isOpen: false }));
+      }
+    } catch (e) {
+      console.error('Initialization failed', e);
+    } finally {
+      setIsLoaded(true);
     }
-    setIsLoaded(true);
   }, []);
 
   const handleUpdateInventory = (newInventory: InventoryItem[]) => {

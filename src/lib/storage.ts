@@ -11,45 +11,99 @@ const STORAGE_KEYS = {
 
 export const storage = {
   getTransactions: (): Transaction[] => {
-    const data = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
-    return data ? JSON.parse(data) : [];
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      console.error('Failed to load transactions', e);
+      return [];
+    }
   },
   saveTransactions: (transactions: Transaction[]) => {
-    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
+    try {
+      localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
+    } catch (e) {
+      console.error('Failed to save transactions', e);
+    }
   },
   getUserProfile: (): UserProfile => {
-    const data = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
-    return data ? JSON.parse(data) : { name: 'Guest' };
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
+      return data ? JSON.parse(data) : { name: 'Guest' };
+    } catch (e) {
+      console.error('Failed to load user profile', e);
+      return { name: 'Guest' };
+    }
   },
   saveUserProfile: (profile: UserProfile) => {
-    localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(profile));
+    try {
+      localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(profile));
+    } catch (e) {
+      console.error('Failed to save user profile', e);
+    }
   },
   getAuditLogs: (): any[] => {
-    const data = localStorage.getItem(STORAGE_KEYS.AUDIT_LOGS);
-    return data ? JSON.parse(data) : [];
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.AUDIT_LOGS);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      console.error('Failed to load audit logs', e);
+      return [];
+    }
   },
   saveAuditLogs: (logs: any[]) => {
-    localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(logs));
+    try {
+      localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(logs));
+    } catch (e) {
+      console.error('Failed to save audit logs', e);
+    }
   },
   getInventory: (): InventoryItem[] => {
-    const data = localStorage.getItem(STORAGE_KEYS.INVENTORY);
-    return data ? JSON.parse(data) : [];
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.INVENTORY);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      console.error('Failed to load inventory', e);
+      return [];
+    }
   },
   saveInventory: (inventory: InventoryItem[]) => {
-    localStorage.setItem(STORAGE_KEYS.INVENTORY, JSON.stringify(inventory));
+    try {
+      localStorage.setItem(STORAGE_KEYS.INVENTORY, JSON.stringify(inventory));
+    } catch (e) {
+      console.error('Failed to save inventory', e);
+    }
   },
   getPartUsage: (): PartUsage[] => {
-    const data = localStorage.getItem(STORAGE_KEYS.PART_USAGE);
-    return data ? JSON.parse(data) : [];
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.PART_USAGE);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      console.error('Failed to load part usage', e);
+      return [];
+    }
   },
   savePartUsage: (usage: PartUsage[]) => {
-    localStorage.setItem(STORAGE_KEYS.PART_USAGE, JSON.stringify(usage));
+    try {
+      localStorage.setItem(STORAGE_KEYS.PART_USAGE, JSON.stringify(usage));
+    } catch (e) {
+      console.error('Failed to save part usage', e);
+    }
   },
   getInventoryCategories: (): string[] => {
-    const data = localStorage.getItem(STORAGE_KEYS.INVENTORY_CATEGORIES);
-    return data ? JSON.parse(data) : ['Screens', 'Batteries', 'Charging Ports', 'Cameras', 'Back Glass', 'Accessories'];
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.INVENTORY_CATEGORIES);
+      return data ? JSON.parse(data) : ['Screens', 'Batteries', 'Charging Ports', 'Cameras', 'Back Glass', 'Accessories'];
+    } catch (e) {
+      console.error('Failed to load inventory categories', e);
+      return ['Screens', 'Batteries', 'Charging Ports', 'Cameras', 'Back Glass', 'Accessories'];
+    }
   },
   saveInventoryCategories: (categories: string[]) => {
-    localStorage.setItem(STORAGE_KEYS.INVENTORY_CATEGORIES, JSON.stringify(categories));
+    try {
+      localStorage.setItem(STORAGE_KEYS.INVENTORY_CATEGORIES, JSON.stringify(categories));
+    } catch (e) {
+      console.error('Failed to save inventory categories', e);
+    }
   },
 };
