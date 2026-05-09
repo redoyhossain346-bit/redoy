@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Package, Plus, Minus, History, User, AlertTriangle, Search, Filter, ClipboardList, X, RotateCcw } from 'lucide-react';
 import { InventoryItem, PartUsage } from '../types';
 import { storage } from '../lib/storage';
-import { cn } from '../lib/utils';
+import { cn, uuid } from '../lib/utils';
 import { format } from 'date-fns';
 
 interface InventoryManagerProps {
@@ -60,7 +60,7 @@ export default function InventoryManager({
     e.preventDefault();
     const item: InventoryItem = {
       ...newItem,
-      id: crypto.randomUUID()
+      id: uuid()
     };
     onUpdateInventory([...inventory, item]);
     setIsAddingItem(false);
@@ -77,7 +77,7 @@ export default function InventoryManager({
 
     const usage: PartUsage = {
       ...newUsage,
-      id: crypto.randomUUID(),
+      id: uuid(),
       timestamp: new Date().toISOString()
     };
 
@@ -107,7 +107,7 @@ export default function InventoryManager({
     const usage: PartUsage = {
       ...newUsage,
       reason: 'return',
-      id: crypto.randomUUID(),
+      id: uuid(),
       timestamp: new Date().toISOString()
     };
 

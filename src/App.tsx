@@ -15,7 +15,7 @@ import ChatBot from './components/ChatBot';
 import InventoryManager from './components/InventoryManager';
 import { Transaction, UserProfile, BudgetSummary, InventoryItem, PartUsage } from './types';
 import { storage } from './lib/storage';
-import { cn, formatCurrency } from './lib/utils';
+import { cn, formatCurrency, uuid } from './lib/utils';
 import { format } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -156,7 +156,7 @@ export default function App() {
           
           // Log Audit
           const log = {
-            id: crypto.randomUUID(),
+            id: uuid(),
             timestamp: new Date().toISOString(),
             action: 'EDIT',
             originalData: editingTransaction,
@@ -171,7 +171,7 @@ export default function App() {
     } else {
       const transaction: Transaction = {
         ...newT,
-        id: crypto.randomUUID()
+        id: uuid()
       };
       setTransactions(prev => [transaction, ...prev]);
     }
@@ -187,7 +187,7 @@ export default function App() {
 
         // Log Audit
         const log = {
-          id: crypto.randomUUID(),
+          id: uuid(),
           timestamp: new Date().toISOString(),
           action: 'DELETE',
           originalData: original
