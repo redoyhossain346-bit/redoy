@@ -8,6 +8,33 @@
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#6366f1" />
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/10044/10044812.png" />
+    <script>
+      // Diagnostic script to catch early errors before modules load
+      window.onerror = function(msg, url, line, col, error) {
+        var root = document.getElementById('root');
+        if (root) {
+          root.innerHTML = '<div style="padding: 20px; background: #1e293b; color: white; border: 2px solid #ef4444; margin: 20px; font-family: sans-serif; border-radius: 8px;">' +
+            '<h1 style="color: #ef4444; margin: 0 0 10px 0;">Browser Error Detected</h1>' +
+            '<p style="margin: 0 0 10px 0;">The application could not start. This usually happens on older browsers or due to strict computer security settings.</p>' +
+            '<pre style="background: #0f172a; padding: 10px; border-radius: 4px; overflow: auto; font-size: 13px; color: #94a3b8;">' + msg + '</pre>' +
+            '<p style="margin: 10px 0 0 0; font-size: 12px;">Try clearing your browser data or using Incognito mode.</p>' +
+            '</div>';
+        }
+        return false;
+      };
+      
+      // Check if root is still empty after 4 seconds
+      setTimeout(function() {
+        var root = document.getElementById('root');
+        if (root && root.innerHTML === '') {
+          root.innerHTML = '<div style="padding: 20px; background: #1e293b; color: white; border: 2px solid #f59e0b; margin: 20px; font-family: sans-serif; border-radius: 8px;">' +
+            '<h1 style="color: #f59e0b; margin: 0 0 10px 0;">Loading Timeout</h1>' +
+            '<p>The app is taking too long to load. This might be because the browser is blocking modern script modules.</p>' +
+            '<button onclick="location.reload()" style="background: #6366f1; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 10px;">Retry Now</button>' +
+            '</div>';
+        }
+      }, 4000);
+    </script>
   </head>
   <body>
     <div id="root"></div>

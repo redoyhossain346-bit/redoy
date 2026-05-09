@@ -40,9 +40,10 @@ Messages starting with `npm warn deprecated` are **normal** information about th
 
 ### Blank Page / White Screen
 If the app shows a white screen:
-1. **Use Localhost**: Instead of `IP address`, type **`http://localhost:5173`** (or the link Vite gives you) directly into your browser.
+1. **Use Localhost**: Instead of `IP address`, type **`http://localhost:5173`** directly into your browser.
 2. **Incognito Mode**: This is the best way to test—it clears old browser data.
-3. **Check Terminal**: Make sure you didn't close the terminal window where you ran `npm run dev`.
+3. **Try Chrome/Edge**: If you are using an old version of Internet Explorer or Safari, please try installing the latest version of **Google Chrome**.
+4. **Check Terminal**: Make sure you didn't close the terminal window where you ran `npm run dev`. If the terminal shows errors, the app won't start.
 
 ### Security Warning (Not Secure)
 - Since the app runs locally on `http`, your browser might show a "Not Secure" warning. This is normal for local development. You can safely ignore it or click "Advanced" and "Proceed".
