@@ -11,7 +11,9 @@ import TransactionForm from './components/TransactionForm';
 import TransactionList from './components/TransactionList';
 import ChartsSection from './components/ChartsSection';
 import PasscodeModal from './components/PasscodeModal';
-import { Transaction, UserProfile, BudgetSummary } from './types';
+import ChatBot from './components/ChatBot';
+import InventoryManager from './components/InventoryManager';
+import { Transaction, UserProfile, BudgetSummary, InventoryItem, PartUsage } from './types';
 import { storage } from './lib/storage';
 import { cn, formatCurrency } from './lib/utils';
 import { format } from 'date-fns';
@@ -37,26 +39,57 @@ export default function App() {
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
   const [filterType, setFilterType] = useState<'month' | 'year' | 'all'>('month');
+  const [activeView, setActiveView] = useState<'dashboard' | 'inventory'>('dashboard');
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [usageHistory, setUsageHistory] = useState<PartUsage[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
 
   useEffect(() => {
     const savedTransactions = storage.getTransactions();
     const savedUser = storage.getUserProfile();
     const savedLogs = storage.getAuditLogs();
+    const savedInventory = storage.getInventory();
+    const savedUsage = storage.getPartUsage();
+    const savedCategories = storage.getInventoryCategories();
     const savedSession = sessionStorage.getItem('glass_budget_session');
+    const persistentSession = localStorage.getItem('keep_logged_in') === 'true';
     
     setTransactions(savedTransactions);
     setUser(savedUser);
     setAuditLogs(savedLogs);
-    if (savedSession === 'active') {
+    setInventory(savedInventory);
+    setUsageHistory(savedUsage);
+    setCategories(savedCategories);
+    if (savedSession === 'active' || persistentSession) {
       setIsLoggedIn(true);
       setPasscodeModal(prev => ({ ...prev, isOpen: false }));
     }
     setIsLoaded(true);
   }, []);
 
+  const handleUpdateInventory = (newInventory: InventoryItem[]) => {
+    setInventory(newInventory);
+    storage.saveInventory(newInventory);
+  };
+
+  const handleUpdateUsage = (newUsage: PartUsage[]) => {
+    setUsageHistory(newUsage);
+    storage.savePartUsage(newUsage);
+  };
+
+  const handleUpdateCategories = (newCategories: string[]) => {
+    setCategories(newCategories);
+    storage.saveInventoryCategories(newCategories);
+  };
+
+  const lowStockCount = useMemo(() => {
+    return inventory.filter(item => item.quantity <= item.minStock).length;
+  }, [inventory]);
+
   const handleLogout = () => {
     setIsLoggedIn(false);
     sessionStorage.removeItem('glass_budget_session');
+    localStorage.removeItem('keep_logged_in');
     setPasscodeModal({
       isOpen: true,
       onSuccess: () => setIsLoggedIn(true),
@@ -210,6 +243,25 @@ export default function App() {
     });
   };
 
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  
+  useEffect(() => {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    });
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    }
+  };
+
   const handleUpdateUser = (name: string) => {
     setUser({ name });
   };
@@ -235,10 +287,49 @@ export default function App() {
         }}
         onSuccess={handleLoginSuccess}
       />
+
+      {isLoggedIn && (
+        <div className="flex gap-1 bg-slate-900/50 p-1 rounded-2xl w-fit mx-auto mt-6 border border-white/5">
+          <button
+            onClick={() => setActiveView('dashboard')}
+            className={cn(
+              "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+              activeView === 'dashboard' ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20" : "text-slate-500 hover:text-slate-300"
+            )}
+          >
+            Dashboard
+          </button>
+          <button
+            onClick={() => setActiveView('inventory')}
+            className={cn(
+              "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all relative",
+              activeView === 'inventory' ? "bg-rose-500 text-white shadow-lg shadow-rose-500/20" : "text-slate-500 hover:text-slate-300"
+            )}
+          >
+            Inventory & Parts
+            {lowStockCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-600 text-[8px] font-bold text-white shadow-lg ring-2 ring-slate-900 border border-rose-400 animate-bounce">
+                {lowStockCount}
+              </span>
+            )}
+          </button>
+        </div>
+      )}
       
       {!isLoggedIn ? (
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-slate-500 text-[10px] font-bold">
           <p>Login required to access cellular records</p>
+        </div>
+      ) : activeView === 'inventory' ? (
+        <div className="mt-8 min-h-[70vh]">
+          <InventoryManager 
+            inventory={inventory} 
+            usageHistory={usageHistory}
+            categories={categories}
+            onUpdateInventory={handleUpdateInventory}
+            onUpdateUsage={handleUpdateUsage}
+            onUpdateCategories={handleUpdateCategories}
+          />
         </div>
       ) : (
         <>
@@ -348,9 +439,19 @@ export default function App() {
       )}
 
       <footer className="mt-8 pt-6 border-t border-slate-800/50 flex justify-between items-center text-[10px] text-slate-500 font-medium px-2 pb-8">
-        <div className="flex items-center">
-            <span className="flex h-2 w-2 rounded-full bg-emerald-500 mr-2"></span>
-            Local Database Secure & Synced
+        <div className="flex items-center gap-4">
+            <div className="flex items-center">
+                <span className="flex h-2 w-2 rounded-full bg-emerald-500 mr-2"></span>
+                Local Database Secure & Synced
+            </div>
+            {deferredPrompt && (
+              <button 
+                onClick={handleInstallClick}
+                className="bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded-md border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-all cursor-pointer animate-pulse"
+              >
+                Download/Install App
+              </button>
+            )}
         </div>
         <div className="flex flex-col items-end gap-1">
           <div className="flex space-x-6">
@@ -363,6 +464,7 @@ export default function App() {
           </div>
         </div>
       </footer>
+      <ChatBot />
     </div>
   );
 }

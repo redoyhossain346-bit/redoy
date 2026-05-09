@@ -1,9 +1,12 @@
-import { Transaction, UserProfile } from "../types";
+import { Transaction, UserProfile, InventoryItem, PartUsage } from "../types";
 
 const STORAGE_KEYS = {
   TRANSACTIONS: 'glass_budget_transactions',
   USER_PROFILE: 'glass_budget_user_profile',
   AUDIT_LOGS: 'glass_budget_audit_logs',
+  INVENTORY: 'glass_budget_inventory',
+  PART_USAGE: 'glass_budget_part_usage',
+  INVENTORY_CATEGORIES: 'glass_budget_inventory_categories',
 };
 
 export const storage = {
@@ -27,5 +30,26 @@ export const storage = {
   },
   saveAuditLogs: (logs: any[]) => {
     localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(logs));
+  },
+  getInventory: (): InventoryItem[] => {
+    const data = localStorage.getItem(STORAGE_KEYS.INVENTORY);
+    return data ? JSON.parse(data) : [];
+  },
+  saveInventory: (inventory: InventoryItem[]) => {
+    localStorage.setItem(STORAGE_KEYS.INVENTORY, JSON.stringify(inventory));
+  },
+  getPartUsage: (): PartUsage[] => {
+    const data = localStorage.getItem(STORAGE_KEYS.PART_USAGE);
+    return data ? JSON.parse(data) : [];
+  },
+  savePartUsage: (usage: PartUsage[]) => {
+    localStorage.setItem(STORAGE_KEYS.PART_USAGE, JSON.stringify(usage));
+  },
+  getInventoryCategories: (): string[] => {
+    const data = localStorage.getItem(STORAGE_KEYS.INVENTORY_CATEGORIES);
+    return data ? JSON.parse(data) : ['Screens', 'Batteries', 'Charging Ports', 'Cameras', 'Back Glass', 'Accessories'];
+  },
+  saveInventoryCategories: (categories: string[]) => {
+    localStorage.setItem(STORAGE_KEYS.INVENTORY_CATEGORIES, JSON.stringify(categories));
   },
 };

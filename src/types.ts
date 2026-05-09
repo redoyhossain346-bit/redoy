@@ -78,6 +78,25 @@ export interface Transaction {
   note: string;
 }
 
+export interface InventoryItem {
+  id: string;
+  name: string;
+  category: string;
+  quantity: number;
+  price: number;
+  minStock: number;
+}
+
+export interface PartUsage {
+  id: string;
+  partId: string;
+  quantity: number;
+  takenBy: string;
+  reason: 'repair' | 'sale' | 'internal' | 'return' | 'other';
+  repairId?: string;
+  timestamp: string;
+}
+
 export interface UserProfile {
   name: string;
 }
