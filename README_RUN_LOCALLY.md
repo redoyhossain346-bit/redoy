@@ -40,10 +40,11 @@ Messages starting with `npm warn deprecated` are **normal** information about th
 
 ### Blank Page / White Screen
 If the app shows a white screen:
-1. **Use Localhost**: Instead of `IP address`, type **`http://localhost:5173`** directly into your browser.
-2. **Incognito Mode**: This is the best way to test—it clears old browser data.
-3. **Try Chrome/Edge**: If you are using an old version of Internet Explorer or Safari, please try installing the latest version of **Google Chrome**.
-4. **Check Terminal**: Make sure you didn't close the terminal window where you ran `npm run dev`. If the terminal shows errors, the app won't start.
+1. **Restart the Server**: In your terminal, stop the current process (press `Ctrl + C`) and run **`npm run dev`** again.
+2. **Use Port 3000**: Type **`http://localhost:3000`** directly into your browser.
+3. **Connection Refused**: If you see "This site can't be reached", it means the terminal command `npm run dev` is NOT running. Make sure that terminal window stays open!
+4. **Incognito Mode**: Use a new **Incognito** window to test.
+5. **Try Chrome**: Ensure you are using a modern browser like Google Chrome.
 
 ### Security Warning (Not Secure)
 - Since the app runs locally on `http`, your browser might show a "Not Secure" warning. This is normal for local development. You can safely ignore it or click "Advanced" and "Proceed".
