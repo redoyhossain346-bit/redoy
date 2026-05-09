@@ -1,11 +1,28 @@
-import { GoogleGenAI } from "@google/genai";
+let genAI: any = null;
 
-const ai = new GoogleGenAI({ 
-  apiKey: (process.env.GEMINI_API_KEY as string) 
-});
+const getAI = async () => {
+  if (!genAI) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || apiKey === "undefined" || apiKey === "null") {
+      return null;
+    }
+    try {
+      const { GoogleGenAI } = await import("@google/genai");
+      genAI = new GoogleGenAI({ apiKey });
+    } catch (err) {
+      console.error("Failed to load Gemini SDK:", err);
+      return null;
+    }
+  }
+  return genAI;
+};
 
 export const getGeminiResponse = async (prompt: string, history: { role: 'user' | 'model', content: string }[] = []) => {
   try {
+    const ai = await getAI();
+    if (!ai) {
+      return "The AI assistant is not configured. Please set the GEMINI_API_KEY environment variable to enable this feature.";
+    }
     const contents = history.map(h => ({
       role: h.role === 'user' ? 'user' : 'model',
       parts: [{ text: h.content }]

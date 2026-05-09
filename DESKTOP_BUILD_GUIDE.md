@@ -12,19 +12,27 @@ Make sure you have the following installed on your computer:
 2. Select **Export to ZIP** or **Export to GitHub**.
 3. Extract the ZIP file to a folder on your computer (e.g., `C:\ManagementApp`).
 
-## 3. Install Dependencies
+## 3. Configuration (Optional: for AI Assistant)
+If you want the AI assistant to work on your local computer:
+1. Create a file named **`.env`** in the main folder.
+2. Add your Gemini API key (you can get one free at [aistudio.google.com](https://aistudio.google.com/app/apikey)):
+   ```text
+   GEMINI_API_KEY=your_key_here
+   ```
+
+## 4. Install Dependencies
 Open a terminal (PowerShell or CMD) in that folder and run:
 ```powershell
 npm install
 ```
 
-## 4. Run the App as a Desktop Window
+## 5. Run the App as a Desktop Window
 To test it before building:
 ```powershell
 npm run desktop
 ```
 
-## 5. Build the Windows Executable (.exe)
+## 6. Build the Windows Executable (.exe)
 To generate the final `.exe` file for Windows:
 ```powershell
 npm run build:exe

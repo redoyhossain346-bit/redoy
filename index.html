@@ -23,17 +23,22 @@
         return false;
       };
       
-      // Check if root is still empty after 4 seconds
+      // Check if root is still empty after 5 seconds
       setTimeout(function() {
         var root = document.getElementById('root');
         if (root && root.innerHTML === '') {
           root.innerHTML = '<div style="padding: 20px; background: #1e293b; color: white; border: 2px solid #f59e0b; margin: 20px; font-family: sans-serif; border-radius: 8px;">' +
             '<h1 style="color: #f59e0b; margin: 0 0 10px 0;">Loading Timeout</h1>' +
-            '<p>The app is taking too long to load. This might be because the browser is blocking modern script modules.</p>' +
+            '<p>The app is taking too long to start. <b>If you are running this on your computer:</b></p>' +
+            '<ul style="font-size: 13px; color: #cbd5e1;">' +
+            '<li>Ensure <b>npm run dev</b> is still running in your black terminal window.</li>' +
+            '<li>Try opening the link in <b>Incognito Mode</b>.</li>' +
+            '<li>Check for any red errors in the Browser Console (Press F12).</li>' +
+            '</ul>' +
             '<button onclick="location.reload()" style="background: #6366f1; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 10px;">Retry Now</button>' +
             '</div>';
         }
-      }, 4000);
+      }, 5000);
     </script>
   </head>
   <body>
