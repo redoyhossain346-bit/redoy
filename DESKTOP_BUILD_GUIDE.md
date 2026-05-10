@@ -26,6 +26,13 @@ Open a terminal (PowerShell or CMD) in that folder and run:
 npm install
 ```
 
+### Troubleshooting: "Scripts are disabled" error
+If you see a red error saying `npm.ps1 cannot be loaded because running scripts is disabled`:
+1. Open PowerShell as **Administrator**.
+2. Run this command: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
+3. Type **Y** and press Enter.
+4. Try `npm install` again in your project folder.
+
 ## 5. Run the App as a Desktop Window
 To test it before building:
 ```powershell
