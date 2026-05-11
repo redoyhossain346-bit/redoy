@@ -7,9 +7,10 @@ interface PasscodeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  allowClose?: boolean;
 }
 
-export default function PasscodeModal({ isOpen, onClose, onSuccess }: PasscodeModalProps) {
+export default function PasscodeModal({ isOpen, onClose, onSuccess, allowClose = true }: PasscodeModalProps) {
   const [userId, setUserId] = useState(localStorage.getItem('remembered_user_id') || '');
   const [passcode, setPasscode] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
@@ -23,13 +24,18 @@ export default function PasscodeModal({ isOpen, onClose, onSuccess }: PasscodeMo
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
+    setError(false);
     try {
       await signInWithPopup(auth, googleProvider);
       onSuccess();
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Google Sign-In failed', error);
       setError(true);
+      // If it's a specific auth error, we can log it more specifically
+      if (error.code === 'auth/unauthorized-domain') {
+        alert(`Unauthorized Domain: Please add "${window.location.hostname}" to authorized domains in Firebase Console.`);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -66,12 +72,14 @@ export default function PasscodeModal({ isOpen, onClose, onSuccess }: PasscodeMo
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-white/80 backdrop-blur-xl">
       <div className="w-full max-w-sm glass-card p-12 border-slate-200 bg-white shadow-2xl relative">
-        <button 
-          onClick={handleClose}
-          className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-50 rounded-xl"
-        >
-          <X size={20} />
-        </button>
+        {allowClose && (
+          <button 
+            onClick={handleClose}
+            className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-50 rounded-xl"
+          >
+            <X size={20} />
+          </button>
+        )}
 
         <div className="flex flex-col items-center text-center">
           <div className="w-20 h-20 rounded-[1.5rem] bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center mb-6 shadow-lg">

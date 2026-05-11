@@ -31,6 +31,7 @@ export default function App() {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   
   // Passcode Modal State
@@ -62,6 +63,8 @@ export default function App() {
       if (fUser) {
         setIsLoggedIn(true);
         setUser({ name: fUser.displayName || 'Operator' });
+        // Ensure modal closes on successful auth
+        setPasscodeModal(prev => ({ ...prev, isOpen: false }));
       } else {
         setIsLoggedIn(false);
         setUser({ name: 'Guest' });
@@ -154,11 +157,21 @@ export default function App() {
   };
 
   const handleGoogleSignIn = async () => {
+    setAuthError(null);
     try {
       await signInWithPopup(auth, googleProvider);
       setPasscodeModal(prev => ({ ...prev, isOpen: false }));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login failed', error);
+      let message = 'Login failed';
+      if (error.code === 'auth/unauthorized-domain') {
+        message = `Unauthorized Domain: Please add "${window.location.hostname}" to authorized domains in Firebase Console.`;
+      } else if (error.code === 'auth/popup-blocked') {
+        message = 'Popup blocked by browser. Please allow popups for this site.';
+      } else {
+        message = error.message || 'Unknown authentication error';
+      }
+      setAuthError(message);
     }
   };
 
@@ -365,12 +378,9 @@ export default function App() {
       
       <PasscodeModal 
         isOpen={passcodeModal.isOpen} 
-        onClose={() => {
-          if (passcodeModal.allowClose) {
-            setPasscodeModal(prev => ({ ...prev, isOpen: false }));
-          }
-        }}
+        onClose={() => setPasscodeModal(prev => ({ ...prev, isOpen: false }))}
         onSuccess={handleLoginSuccess}
+        allowClose={passcodeModal.allowClose}
       />
 
       {isLoggedIn && (
@@ -425,6 +435,15 @@ export default function App() {
             <h2 className="text-2xl font-black text-slate-800 uppercase tracking-widest">Authentication Required</h2>
             <p className="text-xs text-slate-400 font-medium">Please sign in to access your cellular records and history</p>
           </div>
+
+          {authError && (
+            <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl max-w-md text-center">
+              <p className="text-rose-500 text-[10px] font-black uppercase tracking-widest leading-relaxed">
+                {authError}
+              </p>
+            </div>
+          )}
+
           <button 
             onClick={handleGoogleSignIn}
             className="flex items-center gap-4 bg-white border border-slate-200 px-8 py-4 rounded-2xl shadow-xl hover:shadow-2xl transition-all active:scale-95 group"

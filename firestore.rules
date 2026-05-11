@@ -12,7 +12,7 @@ service cloud.firestore {
     }
 
     function isOwner(resourceData) {
-      return isSignedIn() && resourceData.userId == request.auth.uid;
+      return isSignedIn() && resourceData != null && resourceData.userId == request.auth.uid;
     }
 
     function isValidId(id) {
@@ -20,11 +20,11 @@ service cloud.firestore {
     }
 
     function incoming() {
-      return request.resource.data;
+      return request.resource != null ? request.resource.data : null;
     }
 
     function existing() {
-      return resource.data;
+      return resource != null ? resource.data : null;
     }
 
     // --- Validation Helpers ---
@@ -99,7 +99,7 @@ service cloud.firestore {
     }
 
     match /settings/{settingId} {
-      allow read: if isOwner(existing());
+      allow read: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
       allow write: if isSignedIn() && isValidId(settingId) && incoming().userId == request.auth.uid;
     }
   }
