@@ -1,5 +1,5 @@
 import { useState, FormEvent, useEffect } from 'react';
-import { PlusCircle, CreditCard, Banknote, DollarSign, Zap, Plus, X, Edit3 } from 'lucide-react';
+import { User, Phone, PlusCircle, CreditCard, Banknote, DollarSign, Zap, Plus, X, Edit3 } from 'lucide-react';
 import { Category, Transaction, TransactionType, PaymentMethod, TransactionItem, WorkStatus } from '../types';
 import { cn } from '../lib/utils';
 
@@ -7,6 +7,8 @@ interface TransactionFormProps {
   onAdd: (transaction: Omit<Transaction, 'id'>) => void;
   editingTransaction: Transaction | null;
   onCancelEdit?: () => void;
+  currentTaxRate: number;
+  onUpdateTaxRate: (rate: number) => void;
 }
 
 const CATEGORIES: Category[] = [
@@ -22,11 +24,12 @@ const ID_TYPES = ['State ID', 'Passport', 'Driving License', 'Visa Copy', 'Other
 
 const WORK_STATUSES: WorkStatus[] = ['Not Started', 'Working Process', 'Bill Due', 'Pre-Order', 'Return', 'Pickup', 'Paid'];
 
-export default function TransactionForm({ onAdd, editingTransaction, onCancelEdit }: TransactionFormProps) {
+export default function TransactionForm({ onAdd, editingTransaction, onCancelEdit, currentTaxRate, onUpdateTaxRate }: TransactionFormProps) {
   const [type, setType] = useState<TransactionType>('income');
   const [items, setItems] = useState<TransactionItem[]>([]);
   const [itemCategory, setItemCategory] = useState<Category>('Labor');
   const [itemAmount, setItemAmount] = useState('');
+  const [itemQuantity, setItemQuantity] = useState('1');
   const [deviceModel, setDeviceModel] = useState('');
   const [deviceImei, setDeviceImei] = useState('');
   const [deviceStorage, setDeviceStorage] = useState('');
@@ -81,7 +84,7 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
   }, [editingTransaction]);
 
   // Calculations
-  const sVal = items.reduce((acc, curr) => acc + curr.amount, 0);
+  const sVal = items.reduce((acc, curr) => acc + (curr.amount * curr.quantity), 0);
   const dVal = parseFloat(discount) || 0;
   
   // Handle Advance calculation based on split if active
@@ -91,7 +94,9 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
   
   const aVal = isSplit ? (sCashVal + sCardVal + sZelleVal) : (parseFloat(advance) || 0);
   
-  const taxVal = parseFloat(((sVal - dVal) * 0.081).toFixed(2));
+  const [taxEnabled, setTaxEnabled] = useState(true);
+  const taxMultiplier = taxEnabled ? currentTaxRate : 0;
+  const taxVal = parseFloat(((sVal - dVal) * taxMultiplier).toFixed(2));
   const totalAmount = parseFloat((sVal - dVal + taxVal).toFixed(2));
   const dueAmount = parseFloat((totalAmount - aVal).toFixed(2));
 
@@ -102,6 +107,7 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
 
   const addItem = () => {
     const amt = parseFloat(itemAmount);
+    const qty = parseInt(itemQuantity) || 1;
     if (!amt || isNaN(amt)) return;
     
     const isDeviceSell = itemCategory === 'Phone sell' || itemCategory === 'Phone sell' || itemCategory === 'Tablet Sell';
@@ -111,6 +117,7 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
       id: Math.random().toString(36).substr(2, 9),
       category: itemCategory,
       amount: amt,
+      quantity: qty,
       ...(isDeviceSell ? {
         model: deviceModel,
         imei: deviceImei,
@@ -125,6 +132,7 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
     }]);
     
     setItemAmount('');
+    setItemQuantity('1');
     if (isDeviceSell) {
       setDeviceModel('');
       setDeviceImei('');
@@ -196,29 +204,29 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
   };
 
   return (
-    <div className={cn("glass-card p-6", editingTransaction && "border-indigo-500/50 shadow-2xl shadow-indigo-500/10")}>
-      <h3 className="text-xs font-bold text-slate-300 mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {editingTransaction ? <Edit3 size={14} className="text-indigo-400" /> : <PlusCircle size={14} className="text-indigo-400" />}
-          {editingTransaction ? 'Editing Transaction' : 'New Transaction'}
+    <div className={cn("glass-card p-8 bg-white border-slate-200 shadow-sm", editingTransaction && "border-amber-500/50 shadow-lg shadow-amber-500/5")}>
+      <h3 className="text-2xl font-black text-slate-800 mb-10 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          {editingTransaction ? <Edit3 size={28} className="text-amber-500" /> : <PlusCircle size={28} className="text-amber-500" />}
+          <span className="premium-gradient-text">{editingTransaction ? 'Editing Transaction' : 'New Transaction Entry'}</span>
         </div>
         {editingTransaction && onCancelEdit && (
           <button 
             type="button"
             onClick={onCancelEdit}
-            className="text-[10px] text-slate-500 hover:text-slate-300"
+            className="text-xs font-black text-slate-400 hover:text-rose-500 transition-colors uppercase tracking-widest"
           >
             Cancel Edit
           </button>
         )}
       </h3>
       
-      <div className="flex p-1 bg-slate-950/40 rounded-xl mb-4 gap-1">
+      <div className="flex p-2 bg-slate-50 rounded-3xl mb-8 gap-2 border border-slate-100 shadow-sm">
         <button
           onClick={() => setType('income')}
           className={cn(
-            "flex-1 py-2 rounded-lg text-[10px] font-extrabold transition-all",
-            type === 'income' ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/20" : "text-slate-500 hover:text-slate-300"
+            "flex-1 py-5 rounded-2xl text-base font-black transition-all duration-300",
+            type === 'income' ? "bg-emerald-600 text-white shadow-[0_5px_15px_rgba(5,150,105,0.2)]" : "text-slate-400 hover:text-slate-600"
           )}
         >
           Income
@@ -226,8 +234,8 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
         <button
           onClick={() => setType('expense')}
           className={cn(
-            "flex-1 py-2 rounded-lg text-[10px] font-extrabold transition-all",
-            type === 'expense' ? "bg-rose-600 text-white shadow-lg shadow-rose-600/20" : "text-slate-500 hover:text-slate-300"
+            "flex-1 py-5 rounded-2xl text-base font-black transition-all duration-300",
+            type === 'expense' ? "bg-rose-600 text-white shadow-[0_5px_15px_rgba(225,29,72,0.2)]" : "text-slate-400 hover:text-slate-600"
           )}
         >
           Expense
@@ -235,8 +243,8 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
         <button
           onClick={() => setType('refund')}
           className={cn(
-            "flex-1 py-2 rounded-lg text-[10px] font-extrabold transition-all",
-            type === 'refund' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20" : "text-slate-500 hover:text-slate-300"
+            "flex-1 py-5 rounded-2xl text-base font-black transition-all duration-300",
+            type === 'refund' ? "bg-amber-600 text-white shadow-[0_5px_15px_rgba(245,158,11,0.2)]" : "text-slate-400 hover:text-slate-600"
           )}
         >
           Refund
@@ -245,48 +253,59 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Item Builder */}
-        <div className="bg-slate-950/20 p-3 rounded-xl border border-white/5 space-y-3">
+        <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <label className="text-[10px] font-bold text-slate-500 block">Add Products/Services</label>
-            <div className="flex items-center gap-2">
-              <label className="text-[10px] font-bold text-slate-500 block">Work Status:</label>
+            <label className="text-base font-black text-slate-400 block uppercase tracking-[0.2em]">Add Products/Services</label>
+            <div className="flex items-center gap-4">
+              <label className="text-sm font-black text-slate-400 block uppercase tracking-widest">Work Status:</label>
               <select
                 value={workStatus}
                 onChange={(e) => setWorkStatus(e.target.value as WorkStatus)}
-                className="bg-transparent text-[10px] font-bold text-indigo-400 outline-none cursor-pointer"
+                className="bg-transparent text-base font-black text-amber-600 outline-none cursor-pointer uppercase tracking-tight"
               >
                 {WORK_STATUSES.map(status => (
-                  <option key={status} value={status} className="bg-slate-900">{status}</option>
+                  <option key={status} value={status} className="bg-white">{status}</option>
                 ))}
               </select>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-4">
             <select
               value={itemCategory}
               onChange={(e) => setItemCategory(e.target.value as Category)}
-              className="glass-input flex-1 pr-8 text-xs appearance-none"
+              className="glass-input h-16 flex-1 pr-12 text-lg font-black appearance-none border-slate-200 bg-white"
             >
               {CATEGORIES.map(cat => (
-                <option key={cat} value={cat} className="bg-slate-900">{cat}</option>
+                <option key={cat} value={cat} className="bg-white">{cat}</option>
               ))}
             </select>
-            <div className="relative w-24">
-              <DollarSign size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+            <div className="relative w-28">
+              <input
+                type="number"
+                value={itemQuantity}
+                onChange={(e) => setItemQuantity(e.target.value)}
+                placeholder="Qty"
+                className="glass-input h-16 w-full px-2 text-lg font-black text-center border-slate-200 bg-white"
+              />
+              <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-black text-amber-600 bg-white px-1.5 uppercase tracking-widest leading-none border border-amber-600/10 shadow-sm rounded-full">QTY</span>
+            </div>
+            <div className="relative w-40">
+              <DollarSign size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="number"
                 value={itemAmount}
                 onChange={(e) => setItemAmount(e.target.value)}
-                placeholder="0.00"
-                className="glass-input w-full pl-7 text-xs font-bold"
+                placeholder="Price"
+                className="glass-input h-16 w-full pl-10 text-lg font-black border-slate-200 bg-white"
               />
+              <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-black text-amber-600 bg-white px-1.5 uppercase tracking-widest leading-none border border-amber-600/10 shadow-sm rounded-full">PRICE</span>
             </div>
             <button
               type="button"
               onClick={addItem}
-              className="p-2 bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg transition-colors"
+              className="h-16 px-8 bg-amber-500 hover:bg-amber-400 text-white rounded-[1.25rem] transition-all duration-300 flex items-center justify-center shadow-lg shadow-amber-500/10 active:scale-95 border border-amber-600/20"
             >
-              <Plus size={16} />
+              <Plus size={32} />
             </button>
           </div>
 
@@ -335,11 +354,11 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
               <select
                 value={carrier}
                 onChange={(e) => setCarrier(e.target.value)}
-                className="glass-input text-[10px] py-1.5 pr-8 appearance-none"
+                className="glass-input text-[10px] py-1.5 pr-8 appearance-none bg-white border-slate-200"
               >
-                <option value="" className="bg-slate-900">Select Carrier</option>
+                <option value="" className="bg-white text-slate-400">Select Carrier</option>
                 {CARRIERS.map(c => (
-                  <option key={c} value={c} className="bg-slate-900">{c}</option>
+                  <option key={c} value={c} className="bg-white text-slate-800">{c}</option>
                 ))}
               </select>
               <input
@@ -355,91 +374,115 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
           {items.length > 0 && (
             <div className="mt-3 space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
               {items.map(item => (
-                <div key={item.id} className="flex flex-col p-2 bg-slate-900/50 rounded-lg border border-white/5 group">
+                <div key={item.id} className="flex flex-col p-4 bg-white rounded-xl border border-slate-100 group shadow-sm">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold text-slate-300">{item.category}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-black text-slate-800 uppercase tracking-tight">{item.category}</span>
+                      <span className="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded border border-indigo-100">x{item.quantity}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-emerald-400">${item.amount.toFixed(2)}</span>
+                    <div className="flex items-center gap-4">
+                      <span className="text-lg font-black text-emerald-600 font-mono">${(item.amount * item.quantity).toFixed(2)}</span>
                       <button
                         type="button"
                         onClick={() => removeItem(item.id)}
-                        className="p-1 text-slate-500 hover:text-rose-400 transition-colors"
+                        className="p-1.5 text-slate-300 hover:text-rose-500 transition-colors"
                       >
-                        <X size={14} />
+                        <X size={18} />
                       </button>
                     </div>
                   </div>
                   {(item.model || item.imei || item.carrier || item.phoneNumber) && (
-                    <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-0.5 text-[8px] font-bold text-slate-500 uppercase tracking-tighter border-t border-white/5 pt-1">
-                      {item.model && <div>Model: <span className="text-indigo-400">{item.model}</span></div>}
-                      {item.imei && <div>IMEI: <span className="text-indigo-400">{item.imei}</span></div>}
-                      {item.storage && <div>GB: <span className="text-indigo-400">{item.storage}</span></div>}
-                      {item.color && <div>Color: <span className="text-indigo-400">{item.color}</span></div>}
-                      {item.warranty && <div className="col-span-2">Warranty: <span className="text-indigo-400">{item.warranty}</span></div>}
-                      {item.carrier && <div>Carrier: <span className="text-indigo-400">{item.carrier}</span></div>}
-                      {item.phoneNumber && <div>Number: <span className="text-indigo-400">{item.phoneNumber}</span></div>}
+                    <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-0.5 text-[8px] font-black text-slate-400 uppercase tracking-tighter border-t border-slate-50 pt-2">
+                      {item.model && <div>Model: <span className="text-indigo-600">{item.model}</span></div>}
+                      {item.imei && <div>IMEI: <span className="text-indigo-600">{item.imei}</span></div>}
+                      {item.storage && <div>GB: <span className="text-indigo-600">{item.storage}</span></div>}
+                      {item.color && <div>Color: <span className="text-indigo-600">{item.color}</span></div>}
+                      {item.warranty && <div className="col-span-2">Warranty: <span className="text-indigo-600">{item.warranty}</span></div>}
+                      {item.carrier && <div>Carrier: <span className="text-indigo-600">{item.carrier}</span></div>}
+                      {item.phoneNumber && <div>Number: <span className="text-indigo-600">{item.phoneNumber}</span></div>}
                     </div>
                   )}
                 </div>
               ))}
-              <div className="flex justify-between p-2 border-t border-white/5 mt-2">
-                <span className="text-[10px] font-bold text-slate-500">Sub Total</span>
-                <span className="text-sm font-black text-white">${sVal.toFixed(2)}</span>
+              <div className="flex justify-between p-4 border-t border-slate-100 mt-4">
+                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Added Items Total</span>
+                <span className="text-xl font-black text-slate-900">${sVal.toFixed(2)}</span>
               </div>
             </div>
           )}
         </div>
 
-        <div className="space-y-3 bg-slate-950/20 p-3 rounded-xl border border-white/5">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="opacity-50">
-              <label className="text-[10px] font-bold text-slate-500 mb-1 block">Sub Total (Auto)</label>
-              <div className="glass-input w-full text-xs font-bold bg-slate-900/50 flex items-center gap-2">
-                <span className="text-slate-500">$</span>
+        <div className="space-y-6 bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="grid grid-cols-2 gap-6">
+            <div className="opacity-60">
+              <label className="text-sm font-black text-slate-400 mb-2 block uppercase tracking-widest">Sub Total (Auto)</label>
+              <div className="glass-input h-14 w-full text-lg font-black bg-white border-slate-200 flex items-center gap-3">
+                <span className="text-slate-400">$</span>
                 {sVal.toFixed(2)}
               </div>
             </div>
             <div>
-              <label className="text-[10px] font-bold text-slate-500 mb-1 block">Discount</label>
+              <label className="text-sm font-black text-slate-400 mb-2 block uppercase tracking-widest">Discount</label>
               <div className="relative">
-                <DollarSign size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-rose-500/50" />
+                <DollarSign size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-rose-500/30" />
                 <input
                   type="number"
                   value={discount}
                   onChange={(e) => setDiscount(e.target.value)}
                   placeholder="0.00"
-                  className="glass-input w-full pl-7 text-xs text-rose-400"
+                  className="glass-input h-14 w-full pl-10 text-lg font-black text-rose-600 border-slate-200 bg-white"
                 />
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
-              <label className="text-[10px] font-bold text-slate-500 mb-1 block">Sales Tax (8.1%)</label>
-              <div className="glass-input w-full text-xs font-bold bg-slate-900/50 flex items-center gap-2 opacity-80">
-                <span className="text-slate-500">$</span>
-                {taxVal.toFixed(2)}
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-black text-slate-400 block uppercase tracking-widest">Sales Tax</label>
+                <button
+                  type="button"
+                  onClick={() => setTaxEnabled(!taxEnabled)}
+                  className={cn(
+                    "text-xs font-black px-4 py-1 rounded-xl uppercase tracking-widest transition-all shadow-sm",
+                    taxEnabled ? "bg-indigo-600 text-white shadow-indigo-100" : "bg-slate-200 text-slate-500"
+                  )}
+                >
+                  {taxEnabled ? 'Tax ON' : 'Tax OFF'}
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  type="number"
+                  step="0.1"
+                  value={(currentTaxRate * 100).toFixed(1)}
+                  onChange={(e) => onUpdateTaxRate(parseFloat(e.target.value) / 100)}
+                  className="glass-input h-14 w-full text-lg font-black pl-5 pr-12 border-slate-200 bg-white"
+                  placeholder="8.1"
+                />
+                <span className="absolute right-5 top-1/2 -translate-y-1/2 text-sm font-black text-slate-400">%</span>
+              </div>
+              <div className="mt-2 text-xs font-black text-slate-400 flex justify-between uppercase tracking-[0.1em]">
+                <span>Tax Amount:</span>
+                <span className="text-indigo-600">${taxVal.toFixed(2)}</span>
               </div>
             </div>
             <div>
-              <label className="text-[10px] font-bold text-slate-500 mb-1 block">Total Amount</label>
-              <div className="glass-input w-full text-xs font-bold bg-indigo-500/10 border-indigo-500/30 text-indigo-400 flex items-center gap-2">
-                <span className="text-indigo-500/50">$</span>
+              <label className="text-sm font-black text-indigo-600 mb-2 block uppercase tracking-widest">Total Amount</label>
+              <div className="glass-input h-14 w-full text-2xl font-black bg-indigo-50 border-indigo-200 text-indigo-700 flex items-center gap-3">
+                <span className="text-indigo-400/50">$</span>
                 {totalAmount.toFixed(2)}
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
+          <div className="grid grid-cols-2 gap-6 pt-4 border-t border-slate-100">
             <div>
-              <label className="text-[10px] font-bold text-slate-500 mb-1 block">
+              <label className="text-sm font-black text-slate-400 mb-2 block uppercase tracking-widest">
                 {isSplit ? 'Total Paid (Split)' : 'Advance Paid'}
               </label>
               <div className="relative">
-                <DollarSign size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-emerald-500/50" />
+                <DollarSign size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500/30" />
                 <input
                   type="number"
                   value={isSplit ? aVal.toFixed(2) : advance}
@@ -447,15 +490,15 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
                   disabled={isSplit}
                   placeholder="0.00"
                   className={cn(
-                    "glass-input w-full pl-7 text-xs text-emerald-400 font-bold",
-                    isSplit && "bg-emerald-500/5 opacity-80 cursor-not-allowed"
+                    "glass-input h-14 w-full pl-10 text-lg text-emerald-600 font-black border-slate-200 bg-white",
+                    isSplit && "bg-emerald-50/20 opacity-80 cursor-not-allowed border-emerald-100"
                   )}
                 />
               </div>
             </div>
             <div>
-              <label className="text-[10px] font-bold text-amber-500 mb-1 block">Amount Due</label>
-              <div className="glass-input w-full text-xs font-bold bg-amber-500/10 border-amber-500/30 text-amber-400 flex items-center gap-2">
+              <label className="text-sm font-black text-amber-600 mb-2 block uppercase tracking-widest">Amount Due</label>
+              <div className="glass-input h-14 w-full text-lg font-black bg-amber-50 border-amber-200 text-amber-700 flex items-center gap-3">
                 <span className="text-amber-500/50">$</span>
                 {dueAmount.toFixed(2)}
               </div>
@@ -464,85 +507,85 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-[10px] font-bold text-slate-500 block">Payment Method</label>
+          <div className="flex items-center justify-between mb-3">
+            <label className="text-xs font-black text-slate-400 block uppercase tracking-widest">Payment Method</label>
             <button
               type="button"
               onClick={() => setIsSplit(!isSplit)}
               className={cn(
-                "text-[10px] font-bold px-2 py-0.5 rounded transition-all",
-                isSplit ? "bg-indigo-500 text-white" : "text-indigo-400 hover:text-indigo-300"
+                "text-xs font-black px-3 py-1 rounded-lg transition-all shadow-sm",
+                isSplit ? "bg-indigo-600 text-white shadow-indigo-100" : "text-indigo-600 hover:text-indigo-700 bg-indigo-50 border border-indigo-100"
               )}
             >
-              {isSplit ? '✓ Split On' : 'Split?'}
+              {isSplit ? '✓ Split ON' : 'Enable Split?'}
             </button>
           </div>
           
           {!isSplit ? (
-            <div className="flex p-1 bg-slate-950/40 rounded-xl gap-1">
+            <div className="flex p-1 bg-slate-50 border border-slate-100 rounded-xl gap-1 shadow-sm">
               <button
                 type="button"
                 onClick={() => setPaymentMethod('CASH')}
                 className={cn(
-                  "flex-1 py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-2 transition-all",
-                  paymentMethod === 'CASH' ? "bg-slate-700 text-white" : "text-slate-500 hover:text-slate-300"
+                  "flex-1 py-2.5 rounded-lg text-xs font-black flex items-center justify-center gap-2 transition-all",
+                  paymentMethod === 'CASH' ? "bg-white text-slate-900 shadow-sm border border-slate-200" : "text-slate-400 hover:text-slate-600"
                 )}
               >
-                <Banknote size={12} />
-                Cash
+                <Banknote size={14} />
+                CASH
               </button>
               <button
                 type="button"
                 onClick={() => setPaymentMethod('CARD')}
                 className={cn(
-                  "flex-1 py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-2 transition-all",
-                  paymentMethod === 'CARD' ? "bg-slate-700 text-white" : "text-slate-500 hover:text-slate-300"
+                  "flex-1 py-2.5 rounded-lg text-xs font-black flex items-center justify-center gap-2 transition-all",
+                  paymentMethod === 'CARD' ? "bg-white text-slate-900 shadow-sm border border-slate-200" : "text-slate-400 hover:text-slate-600"
                 )}
               >
-                <CreditCard size={12} />
-                Card
+                <CreditCard size={14} />
+                CARD
               </button>
               <button
                 type="button"
                 onClick={() => setPaymentMethod('ZELLE')}
                 className={cn(
-                  "flex-1 py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-2 transition-all",
-                  paymentMethod === 'ZELLE' ? "bg-slate-700 text-white" : "text-slate-500 hover:text-slate-300"
+                  "flex-1 py-2.5 rounded-lg text-xs font-black flex items-center justify-center gap-2 transition-all",
+                  paymentMethod === 'ZELLE' ? "bg-white text-slate-900 shadow-sm border border-slate-200" : "text-slate-400 hover:text-slate-600"
                 )}
               >
-                <Zap size={12} className={cn(paymentMethod === 'ZELLE' ? "text-purple-400" : "text-slate-500")} />
-                Zelle
+                <Zap size={14} className={cn(paymentMethod === 'ZELLE' ? "text-purple-600" : "text-slate-400")} />
+                ZELLE
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-2 p-2 bg-slate-950/40 rounded-xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="grid grid-cols-3 gap-3 p-4 bg-slate-50 border border-slate-100 rounded-xl animate-in fade-in zoom-in-95 duration-200 shadow-sm">
               <div>
-                <label className="text-[8px] font-bold text-slate-500 block mb-1">Cash</label>
+                <label className="text-[9px] font-black text-slate-400 block mb-1.5 uppercase tracking-widest">CASH</label>
                 <input
                   type="number"
                   value={splitCash}
                   onChange={(e) => setSplitCash(e.target.value)}
-                  className="glass-input w-full text-[10px] py-1 px-2"
+                  className="glass-input h-10 w-full text-xs font-black px-3 bg-white border-slate-200"
                   placeholder="0"
                 />
               </div>
               <div>
-                <label className="text-[8px] font-bold text-slate-500 block mb-1">Card</label>
+                <label className="text-[9px] font-black text-slate-400 block mb-1.5 uppercase tracking-widest">CARD</label>
                 <input
                   type="number"
                   value={splitCard}
                   onChange={(e) => setSplitCard(e.target.value)}
-                  className="glass-input w-full text-[10px] py-1 px-2 text-indigo-400"
+                  className="glass-input h-10 w-full text-xs font-black px-3 text-indigo-600 bg-white border-slate-200"
                   placeholder="0"
                 />
               </div>
               <div>
-                <label className="text-[8px] font-bold text-slate-500 block mb-1">Zelle</label>
+                <label className="text-[9px] font-black text-slate-400 block mb-1.5 uppercase tracking-widest">ZELLE</label>
                 <input
                   type="number"
                   value={splitZelle}
                   onChange={(e) => setSplitZelle(e.target.value)}
-                  className="glass-input w-full text-[10px] py-1 px-2 text-purple-400"
+                  className="glass-input h-10 w-full text-xs font-black px-3 text-purple-600 bg-white border-slate-200"
                   placeholder="0"
                 />
               </div>
@@ -552,23 +595,23 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
 
         {/* Change Calculator (Only for Cash payments) */}
         {(paymentMethod === 'CASH' || isSplit) && (
-          <div className="bg-emerald-500/5 p-3 rounded-xl border border-emerald-500/10 grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-1 duration-200 shadow-sm">
             <div>
-              <label className="text-[10px] font-bold text-emerald-500/70 mb-1 block">Cash Received</label>
+              <label className="text-xs font-black text-emerald-700/70 mb-1.5 block uppercase tracking-widest">Cash Received</label>
               <div className="relative">
-                <Banknote size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-emerald-500/50" />
+                <Banknote size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-500/50" />
                 <input
                   type="number"
                   value={cashReceived}
                   onChange={(e) => setCashReceived(e.target.value)}
                   placeholder="0.00"
-                  className="glass-input w-full pl-7 text-xs text-emerald-400 font-bold border-emerald-500/20"
+                  className="glass-input h-11 w-full pl-8 text-sm text-emerald-700 font-black border-emerald-200 bg-white shadow-sm"
                 />
               </div>
             </div>
             <div>
-              <label className="text-[10px] font-bold text-amber-500/70 mb-1 block">Change to Return</label>
-              <div className="glass-input w-full text-xs font-black bg-amber-500/10 border-amber-500/30 text-amber-400 flex items-center justify-between px-3">
+              <label className="text-xs font-black text-amber-700/70 mb-1.5 block uppercase tracking-widest">Change to Return</label>
+              <div className="glass-input h-11 w-full text-base font-black bg-amber-50 border-amber-200 text-amber-700 flex items-center justify-between px-4 shadow-sm">
                 <span className="text-amber-500/50">$</span>
                 <span>{changeVal.toFixed(2)}</span>
               </div>
@@ -577,110 +620,121 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
         )}
 
         <div>
-          <label className="text-[10px] font-bold text-slate-500 mb-1 block">Primary Category (Auto)</label>
-          <div className="glass-input w-full text-xs font-bold bg-slate-900/50 flex items-center gap-2 opacity-80">
+          <label className="text-xs font-black text-slate-400 mb-1.5 block uppercase tracking-widest">Primary Category (Auto)</label>
+          <div className="glass-input h-11 w-full text-sm font-black bg-slate-100 border-slate-200 flex items-center gap-3 px-4 opacity-70 uppercase tracking-tighter text-slate-800">
             {items.length > 0 ? items[0].category : 'Select Items Above'}
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 mb-1 block">Date</label>
-            <input
-              type="date"
-              value={date}
-              max="3036-12-31"
-              onChange={(e) => setDate(e.target.value)}
-              className="glass-input w-full text-xs"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-black text-slate-400 mb-2 block uppercase tracking-widest">Transaction Date</label>
+              <input
+                type="date"
+                value={date}
+                max="3036-12-31"
+                onChange={(e) => setDate(e.target.value)}
+                className="glass-input h-12 w-full text-base font-black text-slate-900 px-4 bg-white border-slate-200 shadow-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-black text-slate-400 mb-2 block uppercase tracking-widest">Internal Note</label>
+              <input
+                type="text"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Optional notes..."
+                className="glass-input h-12 w-full text-sm font-black px-4 bg-white border-slate-200 shadow-sm"
+              />
+            </div>
           </div>
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 mb-1 block">Note</label>
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="..."
-              className="glass-input w-full text-xs"
-            />
-          </div>
-        </div>
 
         <button 
           type="button" 
           onClick={() => setShowCustomer(!showCustomer)}
-          className="text-[10px] font-bold text-indigo-400 flex items-center gap-1 hover:text-indigo-300 transition-colors"
+          className="text-xs font-black text-indigo-600 flex items-center gap-2 hover:text-indigo-700 transition-all uppercase tracking-widest bg-indigo-50 px-4 py-2 rounded-lg border border-indigo-100 shadow-sm active:scale-95"
         >
-          {showCustomer ? '- Remove Customer Info' : '+ Add Customer Info'}
+          {showCustomer ? '- Hide Customer Profile' : '+ Attach Customer Profile'}
         </button>
 
         {showCustomer && (
-          <div className="space-y-3 p-3 bg-slate-950/20 rounded-xl border border-white/5 animate-in fade-in slide-in-from-top-1">
-            <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-4 p-6 bg-slate-50 rounded-xl border border-slate-100 animate-in fade-in slide-in-from-top-2 shadow-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-[9px] font-bold text-slate-500 mb-1 block">Customer Name</label>
-                <input
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  className="glass-input w-full text-xs"
-                  placeholder="Name"
-                />
+                <label className="text-xs font-black text-slate-400 mb-2 block uppercase tracking-[0.1em]">Client Name</label>
+                <div className="relative">
+                  <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Full Name"
+                    className="glass-input h-12 w-full pl-12 text-sm font-black bg-white border-slate-200 shadow-sm"
+                  />
+                </div>
               </div>
               <div>
-                <label className="text-[9px] font-bold text-slate-500 mb-1 block">Phone</label>
-                <input
-                  type="text"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  className="glass-input w-full text-xs"
-                  placeholder="Phone"
-                />
+                <label className="text-xs font-black text-slate-400 mb-2 block uppercase tracking-[0.1em]">Phone Number</label>
+                <div className="relative">
+                  <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="tel"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    placeholder="(000) 000-0000"
+                    className="glass-input h-12 w-full pl-12 text-sm font-black bg-white border-slate-200 shadow-sm"
+                  />
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-[9px] font-bold text-slate-500 mb-1 block">Email</label>
+                <label className="text-[11px] font-black text-slate-400 mb-2 block uppercase tracking-widest">Email Address</label>
                 <input
                   type="email"
                   value={customerEmail}
                   onChange={(e) => setCustomerEmail(e.target.value)}
-                  className="glass-input w-full text-xs"
-                  placeholder="Email"
+                  className="glass-input h-12 w-full text-sm font-black px-4 bg-white border-slate-200 shadow-sm"
+                  placeholder="email@example.com"
                 />
               </div>
               <div>
-                <label className="text-[9px] font-bold text-slate-500 mb-1 block">Warranty</label>
+                <label className="text-[11px] font-black text-slate-400 mb-2 block uppercase tracking-widest">Warranty Period</label>
                 <input
                   type="text"
                   value={warranty}
                   onChange={(e) => setWarranty(e.target.value)}
-                  className="glass-input w-full text-xs"
+                  className="glass-input h-12 w-full text-sm font-black px-4 bg-white border-slate-200 shadow-sm"
                   placeholder="e.g. 6 Months"
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-[9px] font-bold text-slate-500 mb-1 block">Type of ID</label>
-                <select
-                  value={idType}
-                  onChange={(e) => setIdType(e.target.value)}
-                  className="glass-input w-full text-xs appearance-none pr-8 bg-slate-900/50"
-                >
-                  <option value="" className="bg-slate-900">Select ID Type</option>
-                  {ID_TYPES.map(type => (
-                    <option key={type} value={type} className="bg-slate-900">{type}</option>
-                  ))}
-                </select>
+                <label className="text-[11px] font-black text-slate-400 mb-2 block uppercase tracking-widest">Type of Identification</label>
+                <div className="relative">
+                  <select
+                    value={idType}
+                    onChange={(e) => setIdType(e.target.value)}
+                    className="glass-input h-12 w-full text-sm font-black appearance-none pr-10 bg-white px-4 border-slate-200 shadow-sm"
+                  >
+                    <option value="" className="bg-white text-slate-400">Select ID Type</option>
+                    {ID_TYPES.map(type => (
+                      <option key={type} value={type} className="bg-white">{type}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                    <Plus size={14} />
+                  </div>
+                </div>
               </div>
               <div>
-                <label className="text-[9px] font-bold text-slate-500 mb-1 block">ID Number</label>
+                <label className="text-[11px] font-black text-slate-400 mb-2 block uppercase tracking-widest">ID Reference No.</label>
                 <input
                   type="text"
                   value={idNumber}
                   onChange={(e) => setIdNumber(e.target.value)}
-                  className="glass-input w-full text-xs"
+                  className="glass-input h-12 w-full text-sm font-black px-4 bg-white border-slate-200 shadow-sm"
                   placeholder="ID Number"
                 />
               </div>
@@ -689,10 +743,12 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
         )}
 
         <button type="submit" className={cn(
-          "glass-button w-full mt-2 text-sm",
-          editingTransaction && "bg-indigo-600 border-indigo-400 text-white"
+          "glass-button h-16 w-full mt-8 text-lg font-black uppercase tracking-[0.2em] transition-all duration-500 active:scale-95 shadow-lg shadow-slate-200",
+          editingTransaction 
+            ? "bg-amber-600 border-amber-500 text-white" 
+            : "bg-white border-slate-200 text-slate-800 hover:bg-amber-500 hover:text-white hover:border-amber-600"
         )}>
-          {editingTransaction ? 'Update Entry' : 'Post Entry'}
+          {editingTransaction ? '✓ Update Transaction' : 'Post New Record'}
         </button>
       </form>
     </div>

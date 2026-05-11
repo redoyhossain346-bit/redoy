@@ -1,4 +1,4 @@
-import { Transaction, UserProfile, InventoryItem, PartUsage } from "../types";
+import { Transaction, UserProfile, InventoryItem, PartUsage, WorkHour } from "../types";
 
 const STORAGE_KEYS = {
   TRANSACTIONS: 'glass_budget_transactions',
@@ -7,6 +7,8 @@ const STORAGE_KEYS = {
   INVENTORY: 'glass_budget_inventory',
   PART_USAGE: 'glass_budget_part_usage',
   INVENTORY_CATEGORIES: 'glass_budget_inventory_categories',
+  WORK_HOURS: 'glass_budget_work_hours',
+  TAX_RATE: 'glass_budget_tax_rate',
 };
 
 const isStorageAvailable = () => {
@@ -129,6 +131,41 @@ export const storage = {
       localStorage.setItem(STORAGE_KEYS.INVENTORY_CATEGORIES, JSON.stringify(categories));
     } catch (e) {
       console.error('Failed to save inventory categories', e);
+    }
+  },
+  getWorkHours: (): WorkHour[] => {
+    try {
+      if (!STORAGE_AVAILABLE) return [];
+      const data = localStorage.getItem(STORAGE_KEYS.WORK_HOURS);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      console.error('Failed to load work hours', e);
+      return [];
+    }
+  },
+  saveWorkHours: (hours: WorkHour[]) => {
+    try {
+      if (!STORAGE_AVAILABLE) return;
+      localStorage.setItem(STORAGE_KEYS.WORK_HOURS, JSON.stringify(hours));
+    } catch (e) {
+      console.error('Failed to save work hours', e);
+    }
+  },
+  getTaxRate: (): number => {
+    try {
+      if (!STORAGE_AVAILABLE) return 0.081; // Default 8.1%
+      const data = localStorage.getItem(STORAGE_KEYS.TAX_RATE);
+      return data ? parseFloat(data) : 0.081;
+    } catch (e) {
+      return 0.081;
+    }
+  },
+  saveTaxRate: (rate: number) => {
+    try {
+      if (!STORAGE_AVAILABLE) return;
+      localStorage.setItem(STORAGE_KEYS.TAX_RATE, rate.toString());
+    } catch (e) {
+      console.error('Failed to save tax rate', e);
     }
   },
 };

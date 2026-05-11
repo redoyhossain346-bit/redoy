@@ -43,8 +43,8 @@ export default function ChartsSection({ transactions }: ChartsSectionProps) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-      <div className="glass-card p-6 h-[320px] flex flex-col">
-        <h3 className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-4">By Category Distribution</h3>
+      <div className="glass-card p-6 h-[320px] flex flex-col bg-white border-slate-200 shadow-sm">
+        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">By Category Distribution</h3>
         <div className="flex-1 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -58,34 +58,34 @@ export default function ChartsSection({ transactions }: ChartsSectionProps) {
                 dataKey="value"
               >
                 {expenseData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="rgba(0,0,0,0.2)" />
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip 
-                contentStyle={{ backgroundColor: 'rgba(2, 6, 23, 0.9)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)' }}
-                itemStyle={{ color: '#fff', fontSize: '12px' }}
+                contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                itemStyle={{ color: '#1e293b', fontSize: '12px', fontWeight: 'bold' }}
               />
-              <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{ fontSize: '10px' }}/>
+              <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '20px' }}/>
             </PieChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      <div className="glass-card p-6 h-[320px] flex flex-col">
-        <h3 className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-4">Financial Trends</h3>
+      <div className="glass-card p-6 h-[320px] flex flex-col bg-white border-slate-200 shadow-sm">
+        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Financial Trends</h3>
         <div className="flex-1 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={monthlyTrends}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.02)" vertical={false} />
-              <XAxis dataKey="month" stroke="rgba(255,255,255,0.2)" fontSize={10} tickLine={false} axisLine={false} />
-              <YAxis stroke="rgba(255,255,255,0.2)" fontSize={10} tickLine={false} axisLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
+              <XAxis dataKey="month" stroke="rgba(0,0,0,0.4)" fontSize={10} tickLine={false} axisLine={false} />
+              <YAxis stroke="rgba(0,0,0,0.4)" fontSize={10} tickLine={false} axisLine={false} />
               <Tooltip 
-                cursor={{ fill: 'rgba(255,255,255,0.02)' }}
-                contentStyle={{ backgroundColor: 'rgba(2, 6, 23, 0.9)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)' }}
-                itemStyle={{ color: '#fff', fontSize: '12px' }}
+                cursor={{ fill: 'rgba(0,0,0,0.02)' }}
+                contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                itemStyle={{ color: '#1e293b', fontSize: '12px', fontWeight: 'bold' }}
               />
               <Bar dataKey="income" fill="#6366f1" radius={[2, 2, 0, 0]} />
-              <Bar dataKey="expenses" fill="#1e293b" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="expenses" fill="#94a3b8" radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

@@ -37,6 +37,7 @@ export interface TransactionItem {
   id: string;
   category: Category;
   amount: number;
+  quantity: number;
   model?: string;
   imei?: string;
   storage?: string;
@@ -99,6 +100,13 @@ export interface PartUsage {
 
 export interface UserProfile {
   name: string;
+}
+
+export interface WorkHour {
+  id: string;
+  date: string;
+  hours: number;
+  note: string;
 }
 
 export interface BudgetSummary {

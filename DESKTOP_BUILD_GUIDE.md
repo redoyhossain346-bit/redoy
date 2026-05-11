@@ -29,9 +29,13 @@ npm install
 ### Troubleshooting: "Scripts are disabled" error
 If you see a red error saying `npm.ps1 cannot be loaded because running scripts is disabled`:
 1. Open PowerShell as **Administrator**.
-2. Run this command: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
-3. Type **Y** and press Enter.
-4. Try `npm install` again in your project folder.
+2. Type or paste this exact command:
+   ```powershell
+   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+   ```
+3. When it asks for confirmation, type **Y** and press **Enter**.
+4. **Be careful**: Do not add any extra letters like "Y" at the end of the command itself.
+5. Try `npm install` again in your project folder.
 
 ## 5. Run the App as a Desktop Window
 To test it before building:

@@ -48,16 +48,16 @@ export default function ChatBot() {
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="absolute bottom-16 right-0 w-[350px] sm:w-[400px] h-[500px] glass-card flex flex-col shadow-2xl border-indigo-500/30 overflow-hidden"
+            className="absolute bottom-16 right-0 w-[350px] sm:w-[400px] h-[500px] glass-card flex flex-col shadow-2xl border-indigo-100 overflow-hidden bg-white"
           >
             {/* Header */}
-            <div className="p-4 border-b border-white/10 bg-indigo-500/10 flex items-center justify-between">
+            <div className="p-4 border-b border-indigo-50 bg-indigo-50 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center">
                   <Bot size={18} className="text-white" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-white">Glass Assistant</h3>
+                  <h3 className="text-sm font-black text-slate-800">Glass Assistant</h3>
                   <div className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                     <span className="text-[10px] font-bold text-slate-400">Powered by Gemini AI</span>
@@ -66,14 +66,14 @@ export default function ChatBot() {
               </div>
               <button 
                 onClick={() => setIsOpen(false)}
-                className="text-slate-400 hover:text-white transition-colors p-1"
+                className="text-slate-400 hover:text-slate-600 transition-colors p-1"
               >
                 <X size={20} />
               </button>
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-white">
               {messages.map((msg, idx) => (
                 <div 
                   key={idx} 
@@ -84,15 +84,15 @@ export default function ChatBot() {
                 >
                   <div className={cn(
                     "w-8 h-8 rounded-full shrink-0 flex items-center justify-center",
-                    msg.role === 'user' ? "bg-slate-700" : "bg-indigo-600"
+                    msg.role === 'user' ? "bg-slate-100" : "bg-indigo-600"
                   )}>
-                    {msg.role === 'user' ? <User size={14} className="text-white" /> : <Bot size={14} className="text-white" />}
+                    {msg.role === 'user' ? <User size={14} className="text-slate-600" /> : <Bot size={14} className="text-white" />}
                   </div>
                   <div className={cn(
                     "max-w-[80%] p-3 rounded-2xl text-xs font-medium leading-relaxed shadow-sm",
                     msg.role === 'user' 
-                      ? "bg-slate-800 text-slate-200 rounded-tr-none" 
-                      : "bg-indigo-500/20 border border-indigo-500/30 text-slate-200 rounded-tl-none"
+                      ? "bg-slate-50 text-slate-700 rounded-tr-none border border-slate-100" 
+                      : "bg-indigo-50 border border-indigo-100 text-slate-700 rounded-tl-none"
                   )}>
                     {msg.content}
                   </div>
@@ -103,7 +103,7 @@ export default function ChatBot() {
                   <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center">
                     <Bot size={14} className="text-white" />
                   </div>
-                  <div className="bg-indigo-500/20 border border-indigo-500/30 p-3 rounded-2xl rounded-tl-none flex items-center gap-1.5">
+                  <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-2xl rounded-tl-none flex items-center gap-1.5 shadow-sm">
                     <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
                     <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
                     <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce"></div>
@@ -114,7 +114,7 @@ export default function ChatBot() {
             </div>
 
             {/* Input */}
-            <div className="p-4 border-t border-white/10 bg-slate-900/50">
+            <div className="p-4 border-t border-slate-100 bg-slate-50">
               <form 
                 onSubmit={(e) => { e.preventDefault(); handleSend(); }}
                 className="relative"
@@ -124,7 +124,7 @@ export default function ChatBot() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Ask anything about budgeting..."
-                  className="w-full bg-slate-950/50 border border-white/10 rounded-xl py-3 pl-4 pr-12 text-xs font-medium text-white focus:outline-none focus:border-indigo-500/50 transition-all placeholder:text-slate-700"
+                  className="w-full bg-white border border-slate-200 rounded-xl py-3 pl-4 pr-12 text-xs font-medium text-slate-800 focus:outline-none focus:border-indigo-500/50 transition-all placeholder:text-slate-300 shadow-sm"
                 />
                 <button
                   type="submit"
@@ -132,8 +132,8 @@ export default function ChatBot() {
                   className={cn(
                     "absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-all",
                     input.trim() && !isLoading 
-                      ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20" 
-                      : "text-slate-600"
+                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" 
+                      : "text-slate-300"
                   )}
                 >
                   <Send size={16} />

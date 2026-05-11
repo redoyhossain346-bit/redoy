@@ -163,33 +163,33 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
   }, [transactions]);
 
   return (
-    <div className="glass-card p-6 h-full flex flex-col">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-sm font-bold text-slate-300">Recent Activity</h3>
-        <div className="flex items-center gap-3">
+    <div className="glass-card p-6 h-full flex flex-col bg-white border-slate-200 shadow-sm">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-base font-black text-slate-800 uppercase tracking-widest premium-gradient-text">Recent Activity</h3>
+        <div className="flex items-center gap-4">
           <button 
             onClick={exportToExcel}
-            className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+            className="flex items-center gap-2 text-[10px] font-black text-emerald-600 hover:text-emerald-700 transition-all uppercase tracking-widest px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-100 shadow-sm"
             title="Export to Excel"
           >
-            <FileSpreadsheet size={14} />
+            <FileSpreadsheet size={16} />
             EXCEL
           </button>
           <button 
             onClick={exportToPDF}
-            className="flex items-center gap-1.5 text-[10px] font-bold text-rose-400 hover:text-rose-300 transition-colors"
+            className="flex items-center gap-2 text-[10px] font-black text-rose-600 hover:text-rose-700 transition-all uppercase tracking-widest px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-100 shadow-sm"
             title="Export to PDF"
           >
-            <FileText size={14} />
+            <FileText size={16} />
             PDF
           </button>
           {onExportAudit && (
             <button 
               onClick={onExportAudit}
-              className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors ml-1 pl-1 border-l border-white/10"
+              className="flex items-center gap-2 text-[10px] font-black text-amber-600 hover:text-amber-700 transition-all uppercase tracking-widest px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 ml-2 shadow-sm"
               title="Export History"
             >
-              <Fingerprint size={14} />
+              <Fingerprint size={16} />
               HISTORY
             </button>
           )}
@@ -198,102 +198,102 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
 
       <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
         {sortedTransactions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-slate-700">
-            <Box size={32} className="mb-2" />
-            <p className="text-xs">Empty</p>
+          <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+            <Box size={32} className="mb-2 opacity-20" />
+            <p className="text-xs font-black uppercase tracking-widest">Global Log empty</p>
           </div>
         ) : (
           sortedTransactions.map((t) => (
             <div key={t.id} className="space-y-1">
-              <div className="group flex items-center justify-between p-3 bg-slate-800/40 rounded-xl hover:bg-slate-800/60 transition-all border border-white/5">
+              <div className="group flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 hover:border-amber-500/20 transition-all border border-slate-100 shadow-sm">
                 <div className="flex items-center gap-3">
                 <div className={cn(
-                  "w-10 h-10 rounded-lg flex items-center justify-center text-sm",
-                  t.type === 'income' ? "bg-emerald-500/10 text-emerald-400" : 
-                  t.type === 'refund' ? "bg-indigo-500/10 text-indigo-400" :
-                  "bg-rose-500/10 text-rose-400"
+                  "w-12 h-12 rounded-xl flex items-center justify-center text-base shadow-sm font-black",
+                  t.type === 'income' ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : 
+                  t.type === 'refund' ? "bg-amber-50 text-amber-600 border border-amber-100" :
+                  "bg-rose-50 text-rose-600 border border-rose-100"
                 )}>
-                  {CATEGORY_ICONS[t.category] || <Wallet size={16} />}
+                  {CATEGORY_ICONS[t.category] || <Wallet size={20} />}
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold">{t.note || t.category}</p>
+                  <div className="flex items-center gap-3 mb-1">
+                    <p className="text-base font-black text-slate-800 tracking-tight leading-none uppercase">{t.note || t.category}</p>
                     <div className={cn(
-                      "flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold",
-                      t.paymentSplit ? "bg-indigo-500 text-white" :
-                      t.paymentMethod === 'CASH' ? "bg-slate-700 text-slate-300" : 
-                      t.paymentMethod === 'ZELLE' ? "bg-purple-500/20 text-purple-400" :
-                      "bg-indigo-500/20 text-indigo-400"
+                      "flex items-center gap-2 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest",
+                      t.paymentSplit ? "bg-amber-500 text-white shadow-sm" :
+                      t.paymentMethod === 'CASH' ? "bg-slate-200 text-slate-700" : 
+                      t.paymentMethod === 'ZELLE' ? "bg-purple-600 text-white" :
+                      "bg-amber-50 text-amber-600 border border-amber-200"
                     )}>
-                      {t.paymentSplit ? <Layers size={8} /> :
-                       t.paymentMethod === 'CASH' ? <Banknote size={8} /> : 
-                       t.paymentMethod === 'ZELLE' ? <Zap size={8} /> :
-                       <CreditCard size={8} />}
+                      {t.paymentSplit ? <Layers size={10} /> :
+                       t.paymentMethod === 'CASH' ? <Banknote size={10} /> : 
+                       t.paymentMethod === 'ZELLE' ? <Zap size={10} /> :
+                       <CreditCard size={10} />}
                       {t.paymentSplit ? 'Split' : t.paymentMethod}
                     </div>
                     {t.workStatus && (
-                      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold bg-slate-950/40 text-slate-400 border border-white/5">
+                      <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black bg-white text-slate-400 border border-slate-100 uppercase tracking-widest shadow-sm">
                         {t.workStatus}
                       </div>
                     )}
                   </div>
-                  <p className="text-[10px] text-slate-500">{t.category} • {format(new Date(t.date), 'dd MMM')}</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">{t.category} • {format(new Date(t.date), 'dd MMM yyyy')}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
               <div className="text-right">
                 <p className={cn(
-                  "font-bold text-sm",
-                  t.type === 'income' ? "text-emerald-400" : "text-rose-400"
+                  "font-black text-lg tracking-tight",
+                  t.type === 'income' ? "text-emerald-600" : "text-rose-600"
                 )}>
                   {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
                 </p>
                 {t.due > 0 && (
-                  <p className="text-[9px] font-bold text-amber-500">
+                  <p className="text-[10px] font-black text-amber-600 uppercase tracking-tight">
                     Due: {formatCurrency(t.due)}
                   </p>
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 border-l border-slate-200 pl-4">
                 <button 
                   onClick={() => onEdit(t.id)}
-                  className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-indigo-500/20 hover:text-indigo-400 rounded-lg transition-all"
+                  className="p-2.5 opacity-0 group-hover:opacity-100 hover:bg-amber-50 text-slate-400 hover:text-amber-600 rounded-xl transition-all shadow-sm"
                   title="Edit Entry"
                 >
-                  <Wrench size={14} />
+                  <Wrench size={16} />
                 </button>
                 <button 
                   onClick={() => onDelete(t.id)}
-                  className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-rose-500/20 hover:text-rose-400 rounded-lg transition-all"
+                  className="p-2.5 opacity-0 group-hover:opacity-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-xl transition-all shadow-sm"
                   title="Delete Entry"
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={16} />
                 </button>
               </div>
             </div>
           </div>
           
-          <div className="mt-1 ml-12 space-y-1">
+          <div className="mt-1 ml-14 space-y-1">
             {/* Amount Breakdown */}
-            <div className="flex flex-col gap-1 p-2 bg-slate-950/20 rounded-lg border border-white/5">
+            <div className="flex flex-col gap-2 p-4 bg-slate-50 rounded-2xl border border-slate-100 group-hover:border-amber-500/10 transition-colors shadow-sm">
               {/* Items List */}
               {t.items && t.items.length > 0 && (
-                <div className="mb-2 space-y-1.5">
+                <div className="mb-2 space-y-2">
                   {t.items.map(item => (
-                    <div key={item.id} className="flex flex-col gap-0.5 border-l-2 border-indigo-500/20 pl-2">
-                      <div className="flex justify-between items-center text-[8px] font-bold text-slate-400">
-                        <span>• {item.category}</span>
-                        <span className="text-slate-300">{formatCurrency(item.amount)}</span>
+                    <div key={item.id} className="flex flex-col gap-1 border-l-2 border-amber-200 pl-3">
+                      <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                        <span>• {item.category} <span className="text-[8px] text-slate-400 bg-white border border-slate-100 px-1.5 rounded ml-2 shadow-xs">x{item.quantity}</span></span>
+                        <span className="text-slate-800">{formatCurrency(item.amount * item.quantity)}</span>
                       </div>
                       {(item.model || item.imei || item.storage || item.color || item.warranty || item.carrier || item.phoneNumber) && (
-                        <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[7px] text-slate-500 font-bold">
-                          {item.model && <div className="truncate">Model: <span className="text-indigo-400/80">{item.model}</span></div>}
-                          {item.imei && <div className="truncate">IMEI: <span className="text-indigo-400/80">{item.imei}</span></div>}
-                          {item.storage && <div>GB: <span className="text-indigo-400/80">{item.storage}</span></div>}
-                          {item.color && <div>Color: <span className="text-indigo-400/80">{item.color}</span></div>}
-                          {item.carrier && <div className="truncate">Carrier: <span className="text-indigo-400/80">{item.carrier}</span></div>}
-                          {item.phoneNumber && <div className="truncate">Num: <span className="text-indigo-400/80">{item.phoneNumber}</span></div>}
-                          {item.warranty && <div className="col-span-2 italic">Warranty: <span className="text-indigo-400/80">{item.warranty}</span></div>}
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[8px] font-black text-slate-400 uppercase tracking-tighter">
+                          {item.model && <div className="truncate">Model: <span className="text-amber-600">{item.model}</span></div>}
+                          {item.imei && <div className="truncate">IMEI: <span className="text-amber-600">{item.imei}</span></div>}
+                          {item.storage && <div>GB: <span className="text-amber-600">{item.storage}</span></div>}
+                          {item.color && <div>Color: <span className="text-amber-600">{item.color}</span></div>}
+                          {item.carrier && <div className="truncate">Carrier: <span className="text-amber-600">{item.carrier}</span></div>}
+                          {item.phoneNumber && <div className="truncate">Num: <span className="text-amber-600">{item.phoneNumber}</span></div>}
+                          {item.warranty && <div className="col-span-2 italic text-amber-600/80 leading-none">Security Warranty: {item.warranty}</div>}
                         </div>
                       )}
                     </div>
@@ -301,66 +301,66 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
                 </div>
               )}
               
-              <div className="flex flex-wrap gap-x-3 gap-y-1 text-[9px] font-medium border-t border-white/5 pt-1">
-                <div className="text-slate-500">Sub: <span className="text-slate-300">{formatCurrency(t.subTotal)}</span></div>
-                {t.discount > 0 && <div className="text-rose-500/70">Disc: <span className="text-rose-400">-{formatCurrency(t.discount)}</span></div>}
-                {t.tax > 0 && <div className="text-slate-500">Tax: <span className="text-slate-300">{formatCurrency(t.tax)}</span></div>}
-                {t.advance > 0 && <div className="text-emerald-500/70">Adv: <span className="text-emerald-400">-{formatCurrency(t.advance)}</span></div>}
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-[9px] font-black border-t border-slate-200 pt-2">
+                <div className="text-slate-400">Sub: <span className="text-slate-700">{formatCurrency(t.subTotal)}</span></div>
+                {t.discount > 0 && <div className="text-rose-500/70">Disc: <span className="text-rose-600">-{formatCurrency(t.discount)}</span></div>}
+                {t.tax > 0 && <div className="text-slate-400">Tax: <span className="text-slate-700">{formatCurrency(t.tax)}</span></div>}
+                {t.advance > 0 && <div className="text-emerald-500/70">Adv: <span className="text-emerald-600">-{formatCurrency(t.advance)}</span></div>}
               </div>
               
               {t.paymentSplit && (
-                <div className="pt-1 mt-1 border-t border-white/5 flex flex-wrap gap-3 text-[8px] font-bold text-slate-500">
-                  <span className="text-slate-600">Split:</span>
-                  {t.paymentSplit.cash > 0 && <div className="flex items-center gap-1"><Banknote size={8} /> Cash: {formatCurrency(t.paymentSplit.cash)}</div>}
-                  {t.paymentSplit.card > 0 && <div className="flex items-center gap-1"><CreditCard size={8} /> Card: {formatCurrency(t.paymentSplit.card)}</div>}
-                  {t.paymentSplit.zelle > 0 && <div className="flex items-center gap-1"><Zap size={8} /> Zelle: {formatCurrency(t.paymentSplit.zelle)}</div>}
+                <div className="pt-2 mt-1 border-t border-slate-200 flex flex-wrap gap-3 text-[8px] font-black text-slate-400">
+                  <span className="text-slate-500">Split:</span>
+                  {t.paymentSplit.cash > 0 && <div className="flex items-center gap-1 text-slate-700"><Banknote size={8} className="text-emerald-600" /> Cash: {formatCurrency(t.paymentSplit.cash)}</div>}
+                  {t.paymentSplit.card > 0 && <div className="flex items-center gap-1 text-slate-700"><CreditCard size={8} className="text-indigo-600" /> Card: {formatCurrency(t.paymentSplit.card)}</div>}
+                  {t.paymentSplit.zelle > 0 && <div className="flex items-center gap-1 text-slate-700"><Zap size={8} className="text-purple-600" /> Zelle: {formatCurrency(t.paymentSplit.zelle)}</div>}
                 </div>
               )}
               
               {t.cashReceived && (
-                <div className="pt-1 mt-1 border-t border-white/5 flex gap-4 text-[8px] font-bold">
-                  <div className="text-emerald-500/80">Received: {formatCurrency(t.cashReceived)}</div>
-                  {t.changeDue && <div className="text-amber-500/80">Change: {formatCurrency(t.changeDue)}</div>}
+                <div className="pt-2 mt-1 border-t border-slate-200 flex gap-4 text-[8px] font-black">
+                  <div className="text-emerald-600">Received: {formatCurrency(t.cashReceived)}</div>
+                  {t.changeDue && <div className="text-amber-600">Change: {formatCurrency(t.changeDue)}</div>}
                 </div>
               )}
             </div>
 
             {t.customer && (
-              <div className="p-3 bg-slate-950/20 rounded-xl border border-white/5 grid grid-cols-2 gap-y-2 gap-x-4">
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 grid grid-cols-2 gap-y-2.5 gap-x-6 shadow-sm">
                 {t.customer.name && (
-                  <div className="flex items-center gap-2 text-[10px] text-slate-400">
-                    <User size={10} className="text-indigo-400" />
-                    <span className="font-medium">{t.customer.name}</span>
+                  <div className="flex items-center gap-2.5 text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">
+                    <User size={12} className="text-amber-600" />
+                    <span className="text-slate-700">{t.customer.name}</span>
                   </div>
                 )}
                 {t.customer.phone && (
-                  <div className="flex items-center gap-2 text-[10px] text-slate-400">
-                    <Phone size={10} className="text-indigo-400" />
-                    <span>{t.customer.phone}</span>
+                  <div className="flex items-center gap-2.5 text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">
+                    <Phone size={12} className="text-amber-600" />
+                    <span className="text-slate-700">{t.customer.phone}</span>
                   </div>
                 )}
                 {t.customer.email && (
-                  <div className="flex items-center gap-2 text-[10px] text-slate-400">
-                    <Mail size={10} className="text-indigo-400" />
-                    <span className="truncate max-w-[120px]">{t.customer.email}</span>
+                  <div className="flex items-center gap-2.5 text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">
+                    <Mail size={12} className="text-amber-600" />
+                    <span className="truncate max-w-[150px] lowercase text-slate-700">{t.customer.email}</span>
                   </div>
                 )}
                 {t.customer.warranty && (
-                  <div className="flex items-center gap-2 text-[10px] text-indigo-300">
-                    <ShieldCheck size={10} className="text-indigo-400" />
-                    <span>Warranty: {t.customer.warranty}</span>
+                  <div className="flex items-center gap-2.5 text-[10px] font-black text-emerald-600 uppercase tracking-widest leading-none">
+                    <ShieldCheck size={12} />
+                    <span>{t.customer.warranty} Coverage</span>
                   </div>
                 )}
                 {t.customer.idType && (
-                  <div className="flex items-center gap-2 text-[10px] text-slate-400">
-                    <Fingerprint size={10} className="text-indigo-400" />
-                    <span>ID: {t.customer.idType}</span>
+                  <div className="flex items-center gap-2.5 text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">
+                    <Fingerprint size={12} className="text-amber-600" />
+                    <span className="text-slate-700">{t.customer.idType} Card</span>
                   </div>
                 )}
                 {t.customer.idNumber && (
-                  <div className="flex items-center gap-2 text-[10px] text-slate-400">
-                    <Hash size={10} className="text-indigo-400" />
-                    <span>{t.customer.idNumber}</span>
+                  <div className="flex items-center gap-2.5 text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">
+                    <Hash size={12} className="text-amber-600" />
+                    <span className="text-slate-700">Ref: {t.customer.idNumber}</span>
                   </div>
                 )}
               </div>

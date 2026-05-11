@@ -4,16 +4,18 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { Calendar } from 'lucide-react';
+import { Calendar, Filter, RefreshCw } from 'lucide-react';
 import Header from './components/Header';
 import HeroCard from './components/HeroCard';
 import TransactionForm from './components/TransactionForm';
 import TransactionList from './components/TransactionList';
-import ChartsSection from './components/ChartsSection';
 import PasscodeModal from './components/PasscodeModal';
 import ChatBot from './components/ChatBot';
 import InventoryManager from './components/InventoryManager';
-import { Transaction, UserProfile, BudgetSummary, InventoryItem, PartUsage } from './types';
+import WorkHoursTracker from './components/WorkHoursTracker';
+import SalesSummary from './components/SalesSummary';
+import DailyStatement from './components/DailyStatement';
+import { Transaction, UserProfile, BudgetSummary, InventoryItem, PartUsage, WorkHour } from './types';
 import { storage } from './lib/storage';
 import { cn, formatCurrency, uuid } from './lib/utils';
 import { format } from 'date-fns';
@@ -38,11 +40,17 @@ export default function App() {
   // Statement Filtering
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
-  const [filterType, setFilterType] = useState<'month' | 'year' | 'all'>('month');
-  const [activeView, setActiveView] = useState<'dashboard' | 'inventory'>('dashboard');
+  const [startDate, setStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [filterType, setFilterType] = useState<'month' | 'year' | 'range' | 'all'>('month');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [activeView, setActiveView] = useState<'dashboard' | 'inventory' | 'hours' | 'daily_log'>('dashboard');
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [usageHistory, setUsageHistory] = useState<PartUsage[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [workHours, setWorkHours] = useState<WorkHour[]>([]);
+  const [taxRate, setTaxRate] = useState<number>(0.081);
 
   useEffect(() => {
     try {
@@ -52,6 +60,8 @@ export default function App() {
       const savedInventory = storage.getInventory();
       const savedUsage = storage.getPartUsage();
       const savedCategories = storage.getInventoryCategories();
+      const savedWorkHours = storage.getWorkHours();
+      const savedTaxRate = storage.getTaxRate();
       const savedSession = sessionStorage.getItem('glass_budget_session');
       const persistentSession = localStorage.getItem('keep_logged_in') === 'true';
       
@@ -61,6 +71,8 @@ export default function App() {
       setInventory(savedInventory);
       setUsageHistory(savedUsage);
       setCategories(savedCategories);
+      setWorkHours(savedWorkHours);
+      setTaxRate(savedTaxRate);
       if (savedSession === 'active' || persistentSession) {
         setIsLoggedIn(true);
         setPasscodeModal(prev => ({ ...prev, isOpen: false }));
@@ -85,6 +97,16 @@ export default function App() {
   const handleUpdateCategories = (newCategories: string[]) => {
     setCategories(newCategories);
     storage.saveInventoryCategories(newCategories);
+  };
+
+  const handleUpdateWorkHours = (newHours: WorkHour[]) => {
+    setWorkHours(newHours);
+    storage.saveWorkHours(newHours);
+  };
+
+  const handleUpdateTaxRate = (newRate: number) => {
+    setTaxRate(newRate);
+    storage.saveTaxRate(newRate);
   };
 
   const lowStockCount = useMemo(() => {
@@ -127,10 +149,29 @@ export default function App() {
   }, [user, isLoaded]);
 
   const filteredTransactions = useMemo(() => {
-    if (filterType === 'all') return transactions;
-    if (filterType === 'year') return transactions.filter(t => t.date.startsWith(selectedYear));
-    return transactions.filter(t => t.date.startsWith(selectedMonth));
-  }, [transactions, selectedMonth, selectedYear, filterType]);
+    let result = transactions;
+
+    // Time Based Filter
+    if (filterType === 'month') {
+      result = result.filter(t => t.date.startsWith(selectedMonth));
+    } else if (filterType === 'year') {
+      result = result.filter(t => t.date.startsWith(selectedYear));
+    } else if (filterType === 'range') {
+      result = result.filter(t => t.date >= startDate && t.date <= endDate);
+    }
+
+    // Payment Method Filter
+    if (paymentMethodFilter !== 'all') {
+      result = result.filter(t => t.paymentMethod === paymentMethodFilter);
+    }
+
+    // Work Status Filter
+    if (statusFilter !== 'all') {
+      result = result.filter(t => t.workStatus === statusFilter);
+    }
+
+    return result;
+  }, [transactions, selectedMonth, selectedYear, startDate, endDate, filterType, paymentMethodFilter, statusFilter]);
 
   const summary: BudgetSummary = useMemo(() => {
     const totalIncome = filteredTransactions
@@ -273,10 +314,15 @@ export default function App() {
 
   if (!isLoaded) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-slate-400 font-bold text-sm">Initializing Management Portal...</p>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-6">
+          <div className="relative">
+            <div className="w-16 h-16 border-4 border-amber-500/10 border-t-amber-500 rounded-full animate-spin"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-8 h-8 bg-amber-500/5 rounded-full animate-pulse" />
+            </div>
+          </div>
+          <p className="text-slate-400 font-black text-xs uppercase tracking-[0.3em] premium-gradient-text">Initializing Systems...</p>
         </div>
       </div>
     );
@@ -303,26 +349,44 @@ export default function App() {
       />
 
       {isLoggedIn && (
-        <div className="flex gap-1 bg-slate-900/50 p-1 rounded-2xl w-fit mx-auto mt-6 border border-white/5">
+        <div className="flex gap-2 bg-slate-100/50 p-2 rounded-3xl w-fit mx-auto mt-8 border border-slate-200 backdrop-blur-xl mb-6">
           <button
             onClick={() => setActiveView('dashboard')}
             className={cn(
-              "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-              activeView === 'dashboard' ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20" : "text-slate-500 hover:text-slate-300"
+              "px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300",
+              activeView === 'dashboard' ? "bg-amber-500 text-white shadow-[0_0_25px_rgba(245,158,11,0.2)]" : "text-slate-400 hover:text-slate-700 hover:bg-white"
             )}
           >
             Dashboard
           </button>
           <button
-            onClick={() => setActiveView('inventory')}
+            onClick={() => setActiveView('hours')}
             className={cn(
-              "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all relative",
-              activeView === 'inventory' ? "bg-rose-500 text-white shadow-lg shadow-rose-500/20" : "text-slate-500 hover:text-slate-300"
+              "px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300",
+              activeView === 'hours' ? "bg-indigo-600 text-white shadow-[0_0_25px_rgba(79,70,229,0.2)]" : "text-slate-400 hover:text-slate-700 hover:bg-white"
             )}
           >
-            Inventory & Parts
+            Shift Logs
+          </button>
+          <button
+            onClick={() => setActiveView('daily_log')}
+            className={cn(
+              "px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300",
+              activeView === 'daily_log' ? "bg-emerald-600 text-white shadow-[0_0_25px_rgba(5,150,105,0.2)]" : "text-slate-400 hover:text-slate-700 hover:bg-white"
+            )}
+          >
+            Daily Sheet
+          </button>
+          <button
+            onClick={() => setActiveView('inventory')}
+            className={cn(
+              "px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300 relative",
+              activeView === 'inventory' ? "bg-rose-600 text-white shadow-[0_0_25px_rgba(225,29,72,0.2)]" : "text-slate-400 hover:text-slate-700 hover:bg-white"
+            )}
+          >
+            Inventory
             {lowStockCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-600 text-[8px] font-bold text-white shadow-lg ring-2 ring-slate-900 border border-rose-400 animate-bounce">
+              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-600 text-[10px] font-black text-white shadow-lg ring-2 ring-white animate-bounce">
                 {lowStockCount}
               </span>
             )}
@@ -345,102 +409,216 @@ export default function App() {
             onUpdateCategories={handleUpdateCategories}
           />
         </div>
+      ) : activeView === 'hours' ? (
+        <div className="mt-8 min-h-[70vh]">
+          <WorkHoursTracker 
+            workHours={workHours}
+            onUpdate={handleUpdateWorkHours}
+          />
+        </div>
+      ) : activeView === 'daily_log' ? (
+        <div className="mt-8 min-h-[70vh]">
+          <DailyStatement 
+            transactions={transactions}
+            workHours={workHours}
+          />
+        </div>
       ) : (
         <>
-          {/* Monthly Statement Selection */}
-          <div className="mt-8 flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-900/40 border border-white/5 rounded-2xl">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-400">
-                <Calendar size={18} />
+          {/* Top Info Grid: Statement Period & Balance */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-10">
+            {/* Statement Period Selection */}
+            <div className="glass-card p-8 flex flex-col justify-between h-[210px] bg-white border-slate-200">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-4">
+                  <div className="p-4 bg-amber-500/5 rounded-[1.25rem] text-amber-600 border border-amber-500/10 shadow-sm">
+                    <Calendar size={28} />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-black text-slate-800 uppercase tracking-tight">Audit Period</h2>
+                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mt-0.5">Filtering activity</p>
+                  </div>
+                </div>
+                
+                <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-200">
+                  <button
+                    onClick={() => setFilterType('month')}
+                    className={cn(
+                      "px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all uppercase",
+                      filterType === 'month' ? "bg-amber-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
+                    )}
+                  >
+                    Month
+                  </button>
+                  <button
+                    onClick={() => setFilterType('year')}
+                    className={cn(
+                      "px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all uppercase",
+                      filterType === 'year' ? "bg-amber-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
+                    )}
+                  >
+                    Year
+                  </button>
+                  <button
+                    onClick={() => setFilterType('range')}
+                    className={cn(
+                      "px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all uppercase",
+                      filterType === 'range' ? "bg-amber-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
+                    )}
+                  >
+                    Range
+                  </button>
+                </div>
               </div>
-              <div>
-                <h2 className="text-sm font-bold text-white">Statement Period</h2>
-                <p className="text-[10px] text-slate-500 leading-none">Filtering all reports</p>
+
+              <div className="flex items-center gap-6 pt-6 border-t border-slate-100">
+                {filterType === 'month' && (
+                  <div className="flex-1">
+                    <div className="relative">
+                      <input
+                        type="month"
+                        value={selectedMonth}
+                        max="3036-12"
+                        onChange={(e) => {
+                          setSelectedMonth(e.target.value);
+                          setFilterType('month');
+                        }}
+                        className="glass-input h-14 w-full text-sm font-black border-slate-200 text-slate-800 text-center uppercase tracking-widest"
+                      />
+                      <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] font-black text-amber-600 bg-white px-2 uppercase tracking-widest">Active Month</span>
+                    </div>
+                  </div>
+                )}
+
+                {filterType === 'year' && (
+                  <div className="flex-1">
+                    <select
+                      value={selectedYear}
+                      onChange={(e) => {
+                        setSelectedYear(e.target.value);
+                        setFilterType('year');
+                      }}
+                      className="glass-input h-14 w-full text-sm font-black border-slate-200 text-slate-800 appearance-none px-4 bg-white text-center uppercase tracking-widest"
+                    >
+                      {Array.from({ length: 20 }, (_, i) => 2024 + i).map(year => (
+                        <option key={year} value={year.toString()} className="bg-white">{year}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {filterType === 'range' && (
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="glass-input h-14 w-full text-[10px] font-black border-slate-200 bg-white text-slate-800 text-center"
+                    />
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="glass-input h-14 w-full text-[10px] font-black border-slate-200 bg-white text-slate-800 text-center"
+                    />
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setFilterType('all')}
+                  className={cn(
+                    "px-4 py-2 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all",
+                    filterType === 'all' ? "bg-slate-800 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
+                  )}
+                >
+                  All Time
+                </button>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setFilterType('all')}
-                className={cn(
-                  "px-4 py-2 rounded-xl text-[10px] font-bold transition-all",
-                  filterType === 'all' ? "bg-slate-700 text-white" : "text-slate-500 hover:text-slate-300"
-                )}
-              >
-                All Time
-              </button>
-              
-              <div className="h-6 w-[1px] bg-white/10 mx-1"></div>
-
-              <div className="flex bg-slate-950/40 p-1 rounded-xl">
-                <button
-                  onClick={() => setFilterType('month')}
-                  className={cn(
-                    "px-3 py-1.5 rounded-lg text-[9px] font-bold transition-all",
-                    filterType === 'month' ? "bg-indigo-500 text-white" : "text-slate-500 hover:text-slate-300"
-                  )}
-                >
-                  Month
-                </button>
-                <button
-                  onClick={() => setFilterType('year')}
-                  className={cn(
-                    "px-3 py-1.5 rounded-lg text-[9px] font-bold transition-all",
-                    filterType === 'year' ? "bg-indigo-500 text-white" : "text-slate-500 hover:text-slate-300"
-                  )}
-                >
-                  Year
-                </button>
-              </div>
-
-              {filterType === 'month' && (
-                <input
-                  type="month"
-                  value={selectedMonth}
-                  max="3036-12"
-                  onChange={(e) => {
-                    setSelectedMonth(e.target.value);
-                    setFilterType('month');
-                  }}
-                  className="glass-input text-[10px] font-bold border-indigo-500/50 text-indigo-400"
-                />
-              )}
-
-              {filterType === 'year' && (
-                <select
-                  value={selectedYear}
-                  onChange={(e) => {
-                    setSelectedYear(e.target.value);
-                    setFilterType('year');
-                  }}
-                  className="glass-input text-[10px] font-bold border-indigo-500/50 text-indigo-400 appearance-none pr-8 bg-slate-900/50"
-                >
-                  {Array.from({ length: 20 }, (_, i) => 2024 + i).map(year => (
-                    <option key={year} value={year.toString()} className="bg-slate-900">{year}</option>
-                  ))}
-                </select>
-              )}
+            {/* Total Balance Hero Card */}
+            <div className="h-[210px]">
+              <HeroCard summary={summary} />
             </div>
           </div>
-          
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 mt-8">
-            {/* Left Column: Hero & Form & Tips */}
-            <div className="xl:col-span-8 flex flex-col gap-8">
-              <HeroCard summary={summary} />
+
+          <div className="flex flex-col gap-8 mt-8">
+            <div className="grid grid-cols-1 gap-8">
+              {/* Full-width Advanced Filters Row */}
+              <div className="glass-card p-10 border-slate-200 bg-white">
+                <div className="w-full flex flex-wrap items-center gap-12">
+                  <div className="flex flex-col gap-3">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] pl-1">Payment Method</label>
+                    <div className="flex bg-slate-50 p-2 rounded-3xl border border-slate-200 gap-2">
+                      {['all', 'CASH', 'CARD', 'ZELLE'].map((m) => (
+                        <button
+                          key={m}
+                          onClick={() => setPaymentMethodFilter(m)}
+                          className={cn(
+                            "px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300",
+                            paymentMethodFilter === m 
+                              ? "bg-amber-500 text-white shadow-sm" 
+                              : "text-slate-400 hover:text-slate-700 hover:bg-white"
+                          )}
+                        >
+                          {m === 'all' ? 'All' : m}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] pl-1">Lifecycle Status</label>
+                    <div className="relative">
+                      <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="glass-input text-xs font-black border-slate-200 bg-slate-50 appearance-none pl-6 pr-14 h-14 rounded-2xl min-w-[240px] focus:border-amber-500/50 outline-none uppercase tracking-[0.1em]"
+                      >
+                        <option value="all" className="bg-white">Show All Statuses</option>
+                        {['Not Started', 'Working Process', 'Bill Due', 'Pre-Order', 'Return', 'Pickup', 'Paid'].map(s => (
+                          <option key={s} value={s} className="bg-white">{s.toUpperCase()}</option>
+                        ))}
+                      </select>
+                      <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-amber-500">
+                        <Filter size={20} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 flex items-end justify-end self-end mb-1">
+                    <button
+                      onClick={() => {
+                        setFilterType('month');
+                        setPaymentMethodFilter('all');
+                        setStatusFilter('all');
+                        setSelectedMonth(new Date().toISOString().slice(0, 7));
+                      }}
+                      className="group flex items-center gap-3 text-xs font-black text-rose-400 hover:text-rose-300 uppercase tracking-widest transition-all p-3 rounded-xl hover:bg-rose-500/5"
+                    >
+                      <RefreshCw size={14} className="group-hover:rotate-180 transition-transform duration-500" />
+                      Reset All Filters
+                    </button>
+                  </div>
+                </div>
+              </div>
               
-              <div className="flex flex-col gap-8">
+              {/* Full-width Data Entry Form */}
+              <div className="w-full max-w-4xl mx-auto">
                 <TransactionForm 
                   onAdd={handleAddTransaction} 
                   editingTransaction={editingTransaction}
                   onCancelEdit={() => setEditingTransaction(null)}
+                  currentTaxRate={taxRate}
+                  onUpdateTaxRate={handleUpdateTaxRate}
                 />
               </div>
-
-              <ChartsSection transactions={filteredTransactions} />
             </div>
 
-            {/* Right Column: Transaction List */}
-            <div className="xl:col-span-4 max-h-[100vh]">
+            {/* Bottom Section: Sales Summary & Recent Activity */}
+            <div className="w-full space-y-8">
+              <SalesSummary transactions={filteredTransactions} />
+              
               <TransactionList 
                 transactions={filteredTransactions} 
                 onDelete={handleDeleteTransaction} 
@@ -452,29 +630,29 @@ export default function App() {
         </>
       )}
 
-      <footer className="mt-8 pt-6 border-t border-slate-800/50 flex justify-between items-center text-[10px] text-slate-500 font-medium px-2 pb-8">
+      <footer className="mt-8 pt-6 border-t border-slate-200 flex justify-between items-center text-[10px] text-slate-400 font-medium px-2 pb-8">
         <div className="flex items-center gap-4">
             <div className="flex items-center">
                 <span className="flex h-2 w-2 rounded-full bg-emerald-500 mr-2"></span>
-                Local Database Secure & Synced
+                Operational Systems Secure
             </div>
             {deferredPrompt && (
               <button 
                 onClick={handleInstallClick}
-                className="bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded-md border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-all cursor-pointer animate-pulse"
+                className="bg-amber-500/10 text-amber-600 px-2 py-0.5 rounded-md border border-amber-500/20 hover:bg-amber-500 hover:text-white transition-all cursor-pointer"
               >
-                Download/Install App
+                Download Terminal
               </button>
             )}
         </div>
         <div className="flex flex-col items-end gap-1">
           <div className="flex space-x-6">
-              <span>Session: Active</span>
+              <span>Status: Online</span>
               <span>v2.1.0</span>
-              <span className="text-indigo-400">Last backup: Just now</span>
+              <span className="text-amber-600">Last backup: Just now</span>
           </div>
-          <div className="text-slate-400 font-bold bg-slate-800/50 px-2 py-0.5 rounded-md mt-1 border border-white/5">
-            Operator: <span className="text-white">Cellular01</span>
+          <div className="text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded-md mt-1 border border-slate-200">
+            Operator: <span className="text-slate-900">Cellular01</span>
           </div>
         </div>
       </footer>
