@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserCircle, Check, Smartphone, MapPin, Phone, Mail, LogOut, LogIn } from 'lucide-react';
+import { UserCircle, Check, Smartphone, MapPin, Phone, Mail, LogOut, LogIn, Download } from 'lucide-react';
 import { UserProfile } from '../types';
 
 interface HeaderProps {
@@ -8,9 +8,11 @@ interface HeaderProps {
   isLoggedIn: boolean;
   onLogin: () => void;
   onLogout: () => void;
+  onInstall?: () => void;
+  isInstallable?: boolean;
 }
 
-export default function Header({ user, onUpdateUser, isLoggedIn, onLogin, onLogout }: HeaderProps) {
+export default function Header({ user, onUpdateUser, isLoggedIn, onLogin, onLogout, onInstall, isInstallable }: HeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user.name);
 
@@ -21,6 +23,17 @@ export default function Header({ user, onUpdateUser, isLoggedIn, onLogin, onLogo
 
   return (
     <header className="relative flex flex-col items-center py-6 md:py-8 gap-6 border-b border-slate-100 mb-8 pb-8 text-center bg-gradient-to-b from-slate-50 to-transparent">
+      {/* Installation Badge */}
+      {isInstallable && onInstall && (
+        <button 
+          onClick={onInstall}
+          className="absolute left-0 top-0 mt-4 flex items-center gap-2 bg-amber-500 text-white px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-500/20 hover:scale-105 active:scale-95 transition-all z-10 animate-bounce hover:animate-none"
+        >
+          <Download size={14} />
+          Install Desktop App
+        </button>
+      )}
+
       <div className="flex flex-col items-center gap-4">
         <div className="w-16 h-16 rounded-[1.75rem] bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 flex items-center justify-center shadow-[0_10px_30px_rgba(245,158,11,0.2)] shrink-0 overflow-hidden border border-white/20 p-1.5 rotate-3">
           <svg viewBox="0 0 100 100" className="w-full h-full text-black" fill="currentColor">

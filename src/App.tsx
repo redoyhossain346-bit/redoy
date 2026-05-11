@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { Calendar, Filter, RefreshCw, LogIn } from 'lucide-react';
+import { Calendar, Filter, RefreshCw, LogIn, Download } from 'lucide-react';
 import Header from './components/Header';
 import HeroCard from './components/HeroCard';
 import TransactionForm from './components/TransactionForm';
@@ -346,6 +346,27 @@ export default function App() {
     }
   };
 
+  const handleBackupData = () => {
+    const backup = {
+      transactions,
+      inventory,
+      workHours,
+      usageHistory,
+      categories,
+      taxRate,
+      exportedAt: new Date().toISOString(),
+      user: user.name
+    };
+    
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `AllCellular_Backup_${format(new Date(), 'yyyy-MM-dd')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleUpdateUser = (name: string) => {
     setUser({ name });
   };
@@ -374,6 +395,8 @@ export default function App() {
         isLoggedIn={isLoggedIn}
         onLogin={() => setPasscodeModal({ isOpen: true, onSuccess: handleLoginSuccess, allowClose: true })}
         onLogout={handleLogout}
+        onInstall={handleInstallClick}
+        isInstallable={!!deferredPrompt}
       />
       
       <PasscodeModal 
@@ -692,6 +715,16 @@ export default function App() {
                 <span className="flex h-2 w-2 rounded-full bg-emerald-500 mr-2"></span>
                 Operational Systems Secure
             </div>
+            {isLoggedIn && (
+              <button 
+                onClick={handleBackupData}
+                className="bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded-md border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                title="Save database backup to your PC or Drive"
+              >
+                <Download size={10} />
+                Cloud Backup Sync
+              </button>
+            )}
             {deferredPrompt && (
               <button 
                 onClick={handleInstallClick}
