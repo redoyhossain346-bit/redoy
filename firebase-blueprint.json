@@ -1,0 +1,123 @@
+{
+  "entities": {
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Financial records for sales, fixes, and expenses",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "amount": { "type": "number" },
+        "subTotal": { "type": "number" },
+        "discount": { "type": "number" },
+        "tax": { "type": "number" },
+        "advance": { "type": "number" },
+        "due": { "type": "number" },
+        "items": { "type": "array" },
+        "type": { "type": "string", "enum": ["income", "expense", "refund"] },
+        "category": { "type": "string" },
+        "paymentMethod": { "type": "string", "enum": ["CASH", "CARD", "ZELLE"] },
+        "workStatus": { "type": "string" },
+        "paymentSplit": { "type": "object" },
+        "cashReceived": { "type": "number" },
+        "changeDue": { "type": "number" },
+        "customer": { "type": "object" },
+        "date": { "type": "string", "format": "date-time" },
+        "note": { "type": "string" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "amount", "type", "category", "paymentMethod", "date", "userId"]
+    },
+    "InventoryItem": {
+      "title": "Inventory Item",
+      "description": "Stock levels for parts and accessories",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "quantity": { "type": "number" },
+        "price": { "type": "number" },
+        "minStock": { "type": "number" },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "name", "category", "quantity", "price", "userId"]
+    },
+    "WorkHour": {
+      "title": "Work Hour",
+      "description": "Daily operational duty logs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "hours": { "type": "number" },
+        "note": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "date", "hours", "userId"]
+    },
+    "PartUsage": {
+      "title": "Part Usage",
+      "description": "History of parts taken from inventory",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "partId": { "type": "string" },
+        "quantity": { "type": "number" },
+        "takenBy": { "type": "string" },
+        "reason": { "type": "string", "enum": ["repair", "sale", "internal", "return", "other"] },
+        "repairId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "partId", "quantity", "takenBy", "reason", "timestamp", "userId"]
+    },
+    "Category": {
+      "title": "Inventory Category",
+      "description": "Categories for inventory items",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["name", "userId"]
+    },
+    "Setting": {
+      "title": "Application Setting",
+      "description": "Global settings for the application",
+      "type": "object",
+      "properties": {
+        "taxRate": { "type": "number" },
+        "userId": { "type": "string" }
+      },
+      "required": ["taxRate", "userId"]
+    }
+  },
+  "firestore": {
+    "transactions": {
+      "schema": "Transaction",
+      "description": "Collection of all financial transactions"
+    },
+    "inventory": {
+      "schema": "InventoryItem",
+      "description": "Current stock of parts and accessories"
+    },
+    "workHours": {
+      "schema": "WorkHour",
+      "description": "Logs of hours worked"
+    },
+    "partUsage": {
+      "schema": "PartUsage",
+      "description": "Log of parts used"
+    },
+    "categories": {
+      "schema": "Category",
+      "description": "User-defined inventory categories"
+    },
+    "settings": {
+      "schema": "Setting",
+      "description": "Store-wide settings like tax rates"
+    }
+  }
+}

@@ -77,6 +77,8 @@ export interface Transaction {
   };
   date: string;
   note: string;
+  createdAt?: any;
+  updatedAt?: any;
 }
 
 export interface InventoryItem {

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Package, Plus, Minus, History, User, AlertTriangle, Search, Filter, ClipboardList, X, RotateCcw } from 'lucide-react';
 import { InventoryItem, PartUsage } from '../types';
-import { storage } from '../lib/storage';
 import { cn, uuid } from '../lib/utils';
 import { format } from 'date-fns';
 

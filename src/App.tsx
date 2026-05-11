@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { Calendar, Filter, RefreshCw } from 'lucide-react';
+import { Calendar, Filter, RefreshCw, LogIn } from 'lucide-react';
 import Header from './components/Header';
 import HeroCard from './components/HeroCard';
 import TransactionForm from './components/TransactionForm';
@@ -16,16 +16,19 @@ import WorkHoursTracker from './components/WorkHoursTracker';
 import SalesSummary from './components/SalesSummary';
 import DailyStatement from './components/DailyStatement';
 import { Transaction, UserProfile, BudgetSummary, InventoryItem, PartUsage, WorkHour } from './types';
-import { storage } from './lib/storage';
 import { cn, formatCurrency, uuid } from './lib/utils';
 import { format } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { auth, signInWithPopup, googleProvider, signOut } from './lib/firebase';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { firebaseService } from './services/firebaseService';
 
 export default function App() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [user, setUser] = useState<UserProfile>({ name: 'Guest' });
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -53,67 +56,93 @@ export default function App() {
   const [taxRate, setTaxRate] = useState<number>(0.081);
 
   useEffect(() => {
-    try {
-      const savedTransactions = storage.getTransactions();
-      const savedUser = storage.getUserProfile();
-      const savedLogs = storage.getAuditLogs();
-      const savedInventory = storage.getInventory();
-      const savedUsage = storage.getPartUsage();
-      const savedCategories = storage.getInventoryCategories();
-      const savedWorkHours = storage.getWorkHours();
-      const savedTaxRate = storage.getTaxRate();
-      const savedSession = sessionStorage.getItem('glass_budget_session');
-      const persistentSession = localStorage.getItem('keep_logged_in') === 'true';
-      
-      setTransactions(savedTransactions);
-      setUser(savedUser);
-      setAuditLogs(savedLogs);
-      setInventory(savedInventory);
-      setUsageHistory(savedUsage);
-      setCategories(savedCategories);
-      setWorkHours(savedWorkHours);
-      setTaxRate(savedTaxRate);
-      if (savedSession === 'active' || persistentSession) {
-        setIsLoggedIn(true);
-        setPasscodeModal(prev => ({ ...prev, isOpen: false }));
-      }
-    } catch (e) {
-      console.error('Initialization failed', e);
-    } finally {
+    const unsubscribeAuth = onAuthStateChanged(auth, (fUser) => {
+      setFirebaseUser(fUser);
       setIsLoaded(true);
-    }
+      if (fUser) {
+        setIsLoggedIn(true);
+        setUser({ name: fUser.displayName || 'Operator' });
+      } else {
+        setIsLoggedIn(false);
+        setUser({ name: 'Guest' });
+      }
+    });
+
+    return () => unsubscribeAuth();
   }, []);
 
-  const handleUpdateInventory = (newInventory: InventoryItem[]) => {
+  useEffect(() => {
+    if (!firebaseUser) {
+      setTransactions([]);
+      setInventory([]);
+      setUsageHistory([]);
+      setWorkHours([]);
+      return;
+    }
+
+    const unsubTransactions = firebaseService.getTransactions(firebaseUser.uid, setTransactions);
+    const unsubInventory = firebaseService.getInventory(firebaseUser.uid, setInventory);
+    const unsubWorkHours = firebaseService.getWorkHours(firebaseUser.uid, setWorkHours);
+    const unsubUsage = firebaseService.getPartUsage(firebaseUser.uid, setUsageHistory);
+    const unsubCategories = firebaseService.getCategories(firebaseUser.uid, setCategories);
+    const unsubTaxRate = firebaseService.getTaxRate(firebaseUser.uid, setTaxRate);
+
+    return () => {
+      unsubTransactions();
+      unsubInventory();
+      unsubWorkHours();
+      unsubUsage();
+      unsubCategories();
+      unsubTaxRate();
+    };
+  }, [firebaseUser]);
+
+  const handleUpdateInventory = async (newInventory: InventoryItem[]) => {
+    if (!firebaseUser) return;
     setInventory(newInventory);
-    storage.saveInventory(newInventory);
+    // Find what changed and save only changed items
+    for (const item of newInventory) {
+      await firebaseService.saveInventoryItem(firebaseUser.uid, item);
+    }
   };
 
-  const handleUpdateUsage = (newUsage: PartUsage[]) => {
+  const handleUpdateUsage = async (newUsage: PartUsage[]) => {
+    if (!firebaseUser) return;
     setUsageHistory(newUsage);
-    storage.savePartUsage(newUsage);
+    if (newUsage.length > 0) {
+      await firebaseService.savePartUsage(firebaseUser.uid, newUsage[0]);
+    }
   };
 
-  const handleUpdateCategories = (newCategories: string[]) => {
+  const handleUpdateCategories = async (newCategories: string[]) => {
+    if (!firebaseUser) return;
     setCategories(newCategories);
-    storage.saveInventoryCategories(newCategories);
+    const latest = newCategories[newCategories.length - 1];
+    if (latest) {
+      await firebaseService.saveCategory(firebaseUser.uid, latest);
+    }
   };
 
-  const handleUpdateWorkHours = (newHours: WorkHour[]) => {
+  const handleUpdateWorkHours = async (newHours: WorkHour[]) => {
+    if (!firebaseUser) return;
     setWorkHours(newHours);
-    storage.saveWorkHours(newHours);
+    if (newHours.length > 0) {
+      await firebaseService.saveWorkHour(firebaseUser.uid, newHours[0]);
+    }
   };
 
-  const handleUpdateTaxRate = (newRate: number) => {
+  const handleUpdateTaxRate = async (newRate: number) => {
+    if (!firebaseUser) return;
     setTaxRate(newRate);
-    storage.saveTaxRate(newRate);
+    await firebaseService.saveTaxRate(firebaseUser.uid, newRate);
   };
 
   const lowStockCount = useMemo(() => {
     return inventory.filter(item => item.quantity <= item.minStock).length;
   }, [inventory]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await signOut(auth);
     setIsLoggedIn(false);
     sessionStorage.removeItem('glass_budget_session');
     localStorage.removeItem('keep_logged_in');
@@ -124,29 +153,19 @@ export default function App() {
     });
   };
 
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+      setPasscodeModal(prev => ({ ...prev, isOpen: false }));
+    } catch (error) {
+      console.error('Login failed', error);
+    }
+  };
+
   const handleLoginSuccess = () => {
     setIsLoggedIn(true);
     sessionStorage.setItem('glass_budget_session', 'active');
-    passcodeModal.onSuccess();
   };
-
-  useEffect(() => {
-    if (isLoaded) {
-      storage.saveTransactions(transactions);
-    }
-  }, [transactions, isLoaded]);
-
-  useEffect(() => {
-    if (isLoaded) {
-      storage.saveAuditLogs(auditLogs);
-    }
-  }, [auditLogs, isLoaded]);
-
-  useEffect(() => {
-    if (isLoaded) {
-      storage.saveUserProfile(user);
-    }
-  }, [user, isLoaded]);
 
   const filteredTransactions = useMemo(() => {
     let result = transactions;
@@ -192,15 +211,17 @@ export default function App() {
     };
   }, [filteredTransactions]);
 
-  const handleAddTransaction = (newT: Omit<Transaction, 'id'>) => {
+  const handleAddTransaction = async (newT: Omit<Transaction, 'id'>) => {
+    if (!firebaseUser) return;
+    
     if (editingTransaction) {
       setPasscodeModal({
         isOpen: true,
         allowClose: true,
-        onSuccess: () => {
+        onSuccess: async () => {
           const updated: Transaction = { ...newT, id: editingTransaction.id };
           
-          // Log Audit
+          // Log Audit (Client-side sync for now, should ideally be firestore collection too if needed)
           const log = {
             id: uuid(),
             timestamp: new Date().toISOString(),
@@ -210,8 +231,9 @@ export default function App() {
           };
           
           setAuditLogs(prev => [log, ...prev]);
-          setTransactions(prev => prev.map(t => t.id === updated.id ? updated : t));
+          await firebaseService.saveTransaction(firebaseUser.uid, updated);
           setEditingTransaction(null);
+          setPasscodeModal(prev => ({ ...prev, isOpen: false }));
         }
       });
     } else {
@@ -219,15 +241,17 @@ export default function App() {
         ...newT,
         id: uuid()
       };
-      setTransactions(prev => [transaction, ...prev]);
+      await firebaseService.saveTransaction(firebaseUser.uid, transaction);
     }
   };
 
-  const handleDeleteTransaction = (id: string) => {
+  const handleDeleteTransaction = async (id: string) => {
+    if (!firebaseUser) return;
+    
     setPasscodeModal({
       isOpen: true,
       allowClose: true,
-      onSuccess: () => {
+      onSuccess: async () => {
         const original = transactions.find(t => t.id === id);
         if (!original) return;
 
@@ -240,7 +264,8 @@ export default function App() {
         };
 
         setAuditLogs(prev => [log, ...prev]);
-        setTransactions(prev => prev.filter(t => t.id !== id));
+        await firebaseService.deleteTransaction(id);
+        setPasscodeModal(prev => ({ ...prev, isOpen: false }));
       }
     });
   };
@@ -395,8 +420,20 @@ export default function App() {
       )}
       
       {!isLoggedIn ? (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] text-slate-500 text-[10px] font-bold">
-          <p>Login required to access cellular records</p>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-8">
+          <div className="text-center space-y-2">
+            <h2 className="text-2xl font-black text-slate-800 uppercase tracking-widest">Authentication Required</h2>
+            <p className="text-xs text-slate-400 font-medium">Please sign in to access your cellular records and history</p>
+          </div>
+          <button 
+            onClick={handleGoogleSignIn}
+            className="flex items-center gap-4 bg-white border border-slate-200 px-8 py-4 rounded-2xl shadow-xl hover:shadow-2xl transition-all active:scale-95 group"
+          >
+            <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:scale-110 transition-transform">
+              <LogIn size={20} className="text-slate-600" />
+            </div>
+            <span className="text-sm font-black text-slate-800 uppercase tracking-widest">Sign in with Google</span>
+          </button>
         </div>
       ) : activeView === 'inventory' ? (
         <div className="mt-8 min-h-[70vh]">
