@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, Minus, History, User, AlertTriangle, Search, Filter, ClipboardList, X, RotateCcw } from 'lucide-react';
+import { Package, Plus, Minus, History, User, AlertTriangle, Search, Filter, ClipboardList, X, RotateCcw, Edit2, Trash2, Check, AlertCircle } from 'lucide-react';
 import { InventoryItem, PartUsage } from '../types';
 import { cn, uuid } from '../lib/utils';
 import { format } from 'date-fns';
+import { AnimatePresence, motion } from 'motion/react';
 
 interface InventoryManagerProps {
   inventory: InventoryItem[];
@@ -26,8 +27,13 @@ export default function InventoryManager({
   const [isReturningPart, setIsReturningPart] = useState(false);
   const [isManagingCategories, setIsManagingCategories] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [editCategoryName, setEditCategoryName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+
   const [newItem, setNewItem] = useState<Omit<InventoryItem, 'id'>>({
     name: '',
     category: categories[0] || 'Uncategorized',
@@ -36,16 +42,69 @@ export default function InventoryManager({
     minStock: 2
   });
 
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
   const handleAddCategory = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newCategoryName && !categories.includes(newCategoryName)) {
-      onUpdateCategories([...categories, newCategoryName]);
-      setNewCategoryName('');
+    const trimmedName = newCategoryName.trim();
+    if (!trimmedName) return;
+
+    if (categories.some(cat => cat.toLowerCase() === trimmedName.toLowerCase())) {
+      setNotification({ message: 'Category already exists!', type: 'error' });
+      return;
     }
+
+    onUpdateCategories([...categories, trimmedName]);
+    setNewCategoryName('');
+    setNotification({ message: 'Category added successfully!', type: 'success' });
   };
 
   const handleDeleteCategory = (cat: string) => {
+    // Check if any items are using this category
+    const inUse = inventory.some(item => item.category === cat);
+    if (inUse) {
+      setNotification({ message: 'Cannot delete: Category is in use by assets!', type: 'error' });
+      return;
+    }
+
     onUpdateCategories(categories.filter(c => c !== cat));
+    setNotification({ message: 'Category removed!', type: 'success' });
+  };
+
+  const handleStartEdit = (cat: string) => {
+    setEditingCategory(cat);
+    setEditCategoryName(cat);
+  };
+
+  const handleSaveEdit = (oldName: string) => {
+    const trimmedNewName = editCategoryName.trim();
+    if (!trimmedNewName || trimmedNewName === oldName) {
+      setEditingCategory(null);
+      return;
+    }
+
+    if (categories.some(cat => cat !== oldName && cat.toLowerCase() === trimmedNewName.toLowerCase())) {
+      setNotification({ message: 'Target category name already exists!', type: 'error' });
+      return;
+    }
+
+    // Update categories list
+    const updatedCategories = categories.map(cat => cat === oldName ? trimmedNewName : cat);
+    onUpdateCategories(updatedCategories);
+
+    // Update all inventory items using this category
+    const updatedInventory = inventory.map(item => 
+      item.category === oldName ? { ...item, category: trimmedNewName } : item
+    );
+    onUpdateInventory(updatedInventory);
+
+    setEditingCategory(null);
+    setNotification({ message: 'Category updated!', type: 'success' });
   };
 
   const [newUsage, setNewUsage] = useState<Omit<PartUsage, 'id' | 'timestamp'>>({
@@ -70,7 +129,7 @@ export default function InventoryManager({
     e.preventDefault();
     const part = inventory.find(i => i.id === newUsage.partId);
     if (!part || part.quantity < newUsage.quantity) {
-      alert("Insufficient stock!");
+      setNotification({ message: 'Insufficient Asset Stock!', type: 'error' });
       return;
     }
 
@@ -99,7 +158,7 @@ export default function InventoryManager({
     e.preventDefault();
     const part = inventory.find(i => i.id === newUsage.partId);
     if (!part) {
-      alert("Select a valid part!");
+      setNotification({ message: 'Select a valid Registry Asset!', type: 'error' });
       return;
     }
 
@@ -131,6 +190,28 @@ export default function InventoryManager({
     item.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const toggleSelectItem = (id: string) => {
+    setSelectedItemIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedItemIds.length === filteredInventory.length) {
+      setSelectedItemIds([]);
+    } else {
+      setSelectedItemIds(filteredInventory.map(item => item.id));
+    }
+  };
+
+  const handleBulkDelete = () => {
+    const updatedInventory = inventory.filter(item => !selectedItemIds.includes(item.id));
+    onUpdateInventory(updatedInventory);
+    setSelectedItemIds([]);
+    setShowBulkDeleteConfirm(false);
+    setNotification({ message: `Purged ${selectedItemIds.length} assets from registry`, type: 'success' });
+  };
+
   return (
     <div className="glass-card p-10 flex flex-col h-full bg-white border-slate-200 shadow-sm">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
@@ -145,6 +226,17 @@ export default function InventoryManager({
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
+          {selectedItemIds.length > 0 && (
+            <motion.button
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              onClick={() => setShowBulkDeleteConfirm(true)}
+              className="flex-1 sm:flex-none px-6 py-3 bg-rose-50 text-rose-600 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border border-rose-200 flex items-center justify-center gap-3 shadow-sm hover:bg-rose-100"
+            >
+              <Trash2 size={16} />
+              Purge ({selectedItemIds.length})
+            </motion.button>
+          )}
           <button 
             onClick={() => setIsManagingCategories(true)}
             className="flex-1 sm:flex-none px-6 py-3 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-700 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border border-slate-200 flex items-center justify-center gap-3 shadow-sm"
@@ -198,9 +290,22 @@ export default function InventoryManager({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 overflow-hidden">
         {/* Inventory List */}
         <div className="flex flex-col overflow-hidden">
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-4 flex items-center gap-3 border-b border-slate-100 pb-3">
-            <ClipboardList size={14} className="text-amber-500" /> Active Stock Levels
-          </h3>
+          <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-3">
+              <ClipboardList size={14} className="text-amber-500" /> Active Stock Levels
+            </h3>
+            {filteredInventory.length > 0 && (
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <input 
+                  type="checkbox" 
+                  checked={selectedItemIds.length === filteredInventory.length && filteredInventory.length > 0} 
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500/20 transition-all cursor-pointer"
+                />
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest group-hover:text-slate-600 transition-colors">Select All</span>
+              </label>
+            )}
+          </div>
           <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
             {filteredInventory.length === 0 ? (
               <div className="py-20 text-center border-2 border-dashed border-slate-100 rounded-3xl">
@@ -208,10 +313,21 @@ export default function InventoryManager({
               </div>
             ) : (
               filteredInventory.map(item => (
-                <div key={item.id} className="p-5 bg-slate-50 border border-slate-200 rounded-2xl flex justify-between items-center group hover:bg-white hover:border-amber-500/20 transition-all duration-300 shadow-sm">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm font-black text-slate-800 uppercase tracking-tight">{item.name}</span>
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.category}</span>
+                <div key={item.id} className={cn(
+                  "p-5 bg-slate-50 border border-slate-200 rounded-2xl flex justify-between items-center group hover:bg-white transition-all duration-300 shadow-sm",
+                  selectedItemIds.includes(item.id) ? "border-amber-500/40 bg-amber-500/5 ring-1 ring-amber-500/10" : "hover:border-amber-500/20"
+                )}>
+                  <div className="flex items-center gap-4">
+                    <input 
+                      type="checkbox" 
+                      checked={selectedItemIds.includes(item.id)}
+                      onChange={() => toggleSelectItem(item.id)}
+                      className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500/20 transition-all cursor-pointer"
+                    />
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm font-black text-slate-800 uppercase tracking-tight">{item.name}</span>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.category}</span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-6">
                     <div className="text-right">
@@ -269,11 +385,78 @@ export default function InventoryManager({
             )}
           </div>
         </div>
-      </div>      {/* Modals */}
+      </div>      {/* Modals & Notifications */}
+      <AnimatePresence>
+        {notification && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: -20, x: '-50%' }}
+            className={cn(
+              "fixed top-10 left-1/2 z-[200] px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest flex items-center gap-3 shadow-2xl border",
+              notification.type === 'success' ? "bg-emerald-600 text-white border-emerald-500" : "bg-rose-600 text-white border-rose-500"
+            )}
+          >
+            {notification.type === 'success' ? <Check size={16} /> : <AlertCircle size={16} />}
+            {notification.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showBulkDeleteConfirm && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md"
+        >
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="w-full max-w-sm glass-card p-10 border-rose-200 bg-white shadow-2xl text-center"
+          >
+            <div className="w-20 h-20 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <AlertTriangle size={40} />
+            </div>
+            <h2 className="text-xl font-black text-slate-900 mb-2 uppercase tracking-tighter">Confirm Mass Purge</h2>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-relaxed mb-8">
+              You are about to delete <span className="text-rose-600">{selectedItemIds.length} assets</span> from the central registry. This action cannot be reversed.
+            </p>
+            
+            <div className="flex gap-4">
+              <button 
+                onClick={() => setShowBulkDeleteConfirm(false)}
+                className="flex-1 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleBulkDelete}
+                className="flex-[1.5] bg-rose-600 text-white shadow-md rounded-2xl text-[10px] font-black uppercase tracking-widest py-4 transition-all active:scale-95 shadow-rose-200"
+              >
+                Confirm Purge
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+
       {isAddingItem && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
-          <div className="w-full max-w-sm glass-card p-10 border-slate-200 bg-white shadow-2xl">
-            <h2 className="text-xl font-black text-slate-900 mb-8 uppercase tracking-tighter premium-gradient-text">Register New Asset</h2>
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="w-full max-w-sm glass-card p-10 border-slate-200 bg-white shadow-2xl"
+            >
+              <h2 className="text-xl font-black text-slate-900 mb-8 uppercase tracking-tighter premium-gradient-text">Register New Asset</h2>
             <form onSubmit={handleAddItem} className="space-y-6">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Resource Label</label>
@@ -311,33 +494,54 @@ export default function InventoryManager({
                     type="number"
                     required
                     value={newItem.quantity}
-                    onChange={e => setNewItem({...newItem, quantity: parseInt(e.target.value)})}
+                    onChange={e => setNewItem({...newItem, quantity: parseInt(e.target.value) || 0})}
                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 text-sm font-black text-slate-900 focus:outline-none focus:border-amber-500/40 shadow-sm"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Threshold</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Unit Cost</label>
                   <input 
                     type="number"
                     required
-                    value={newItem.minStock}
-                    onChange={e => setNewItem({...newItem, minStock: parseInt(e.target.value)})}
+                    step="0.01"
+                    value={newItem.price}
+                    onChange={e => setNewItem({...newItem, price: parseFloat(e.target.value) || 0})}
                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 text-sm font-black text-slate-900 focus:outline-none focus:border-amber-500/40 shadow-sm"
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Min Threshold</label>
+                <input 
+                  type="number"
+                  required
+                  value={newItem.minStock}
+                  onChange={e => setNewItem({...newItem, minStock: parseInt(e.target.value) || 0})}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 text-sm font-black text-slate-900 focus:outline-none focus:border-amber-500/40 shadow-sm"
+                />
               </div>
               <div className="flex gap-4 pt-6">
                 <button type="button" onClick={() => setIsAddingItem(false)} className="flex-1 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors">Aborted</button>
                 <button type="submit" className="flex-1 bg-amber-500 text-white shadow-md rounded-2xl text-[10px] font-black uppercase tracking-widest py-4 active:scale-95 transition-all">Execute Registration</button>
               </div>
             </form>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
 
       {isTakingPart && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md">
-          <div className="w-full max-w-sm glass-card p-10 border-rose-200 bg-white shadow-2xl">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md"
+        >
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="w-full max-w-sm glass-card p-10 border-rose-200 bg-white shadow-2xl"
+          >
             <h2 className="text-xl font-black text-rose-600 mb-8 uppercase tracking-tighter">Withdrawal Log</h2>
             <form onSubmit={handleTakePart} className="space-y-6">
               <div className="space-y-2">
@@ -389,13 +593,23 @@ export default function InventoryManager({
                 <button type="submit" className="flex-1 bg-rose-600 text-white shadow-md rounded-2xl text-[10px] font-black uppercase tracking-widest py-4 transition-all active:scale-95">Commit Log</button>
               </div>
             </form>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
 
       {isReturningPart && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md">
-          <div className="w-full max-w-sm glass-card p-10 border-emerald-200 bg-white shadow-2xl">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md"
+        >
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="w-full max-w-sm glass-card p-10 border-emerald-200 bg-white shadow-2xl"
+          >
             <h2 className="text-xl font-black text-emerald-600 mb-8 uppercase tracking-tighter">Part Return Registry</h2>
             <form onSubmit={handleReturnPart} className="space-y-6">
               <div className="space-y-2">
@@ -447,13 +661,23 @@ export default function InventoryManager({
                 <button type="submit" className="flex-1 bg-emerald-600 text-white shadow-md rounded-2xl text-[10px] font-black uppercase tracking-widest py-4 transition-all active:scale-95">Commit Registry</button>
               </div>
             </form>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
 
       {isManagingCategories && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md">
-          <div className="w-full max-w-sm glass-card p-10 border-slate-200 bg-white shadow-2xl">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md"
+        >
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="w-full max-w-sm glass-card p-10 border-slate-200 bg-white shadow-2xl"
+          >
             <h2 className="text-xl font-black text-slate-900 mb-8 uppercase tracking-tighter premium-gradient-text">Asset Classifiers</h2>
             
             <form onSubmit={handleAddCategory} className="mb-8 flex gap-3">
@@ -462,7 +686,7 @@ export default function InventoryManager({
                 value={newCategoryName}
                 onChange={e => setNewCategoryName(e.target.value)}
                 className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 text-xs font-black text-slate-900 focus:outline-none focus:border-amber-500/40 uppercase tracking-widest placeholder:text-slate-300 shadow-sm"
-                placeholder="LABEL..."
+                placeholder="NEW LABEL..."
               />
               <button type="submit" className="w-14 h-14 bg-amber-500 text-white rounded-2xl hover:bg-amber-400 transition-all flex items-center justify-center shadow-md active:scale-90">
                 <Plus size={24} />
@@ -470,17 +694,63 @@ export default function InventoryManager({
             </form>
 
             <div className="max-h-80 overflow-y-auto mb-8 space-y-3 pr-2 custom-scrollbar">
-              {categories.map(cat => (
-                <div key={cat} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-200 hover:border-amber-500/20 transition-all duration-300 shadow-sm">
-                  <span className="text-xs font-black text-slate-800 uppercase tracking-widest">{cat}</span>
-                  <button 
-                    onClick={() => handleDeleteCategory(cat)}
-                    className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
+              <AnimatePresence initial={false}>
+                {categories.map(cat => (
+                  <motion.div 
+                    layout
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    key={cat} 
+                    className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-200 hover:border-amber-500/20 transition-all duration-300 shadow-sm"
                   >
-                    <Minus size={20} />
-                  </button>
-                </div>
-              ))}
+                    {editingCategory === cat ? (
+                      <div className="flex-1 flex gap-2">
+                        <input 
+                          autoFocus
+                          value={editCategoryName}
+                          onChange={e => setEditCategoryName(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') handleSaveEdit(cat);
+                            if (e.key === 'Escape') setEditingCategory(null);
+                          }}
+                          className="flex-1 bg-white border border-amber-500/40 rounded-xl px-4 py-2 text-xs font-black text-slate-900 uppercase tracking-widest outline-none"
+                        />
+                        <button 
+                          onClick={() => handleSaveEdit(cat)}
+                          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                        >
+                          <Check size={18} />
+                        </button>
+                        <button 
+                          onClick={() => setEditingCategory(null)}
+                          className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl transition-all"
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="text-xs font-black text-slate-800 uppercase tracking-widest truncate max-w-[160px]">{cat}</span>
+                        <div className="flex items-center gap-1">
+                          <button 
+                            onClick={() => handleStartEdit(cat)}
+                            className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-500/10 rounded-xl transition-all"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteCategory(cat)}
+                            className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
               {categories.length === 0 && (
                 <div className="py-12 text-center border-2 border-dashed border-slate-100 rounded-3xl">
                   <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest italic">Global registry empty</p>
@@ -494,9 +764,10 @@ export default function InventoryManager({
             >
               Terminate View
             </button>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+    </AnimatePresence>
     </div>
   );
 }

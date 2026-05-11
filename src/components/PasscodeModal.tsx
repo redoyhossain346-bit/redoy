@@ -98,7 +98,7 @@ export default function PasscodeModal({ isOpen, onClose, onSuccess, allowClose =
               <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:scale-110 transition-transform">
                 <LogIn size={14} className="text-slate-600" />
               </div>
-              <span className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Sign in with Google</span>
+              <span className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Sign in with Gmail (Google ID)</span>
             </button>
 
             <div className="flex items-center gap-4 py-2">

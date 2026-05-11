@@ -12,7 +12,15 @@ interface HeaderProps {
   isInstallable?: boolean;
 }
 
-export default function Header({ user, onUpdateUser, isLoggedIn, onLogin, onLogout, onInstall, isInstallable }: HeaderProps) {
+export default function Header({ 
+  user, 
+  onUpdateUser, 
+  isLoggedIn, 
+  onLogin, 
+  onLogout, 
+  onInstall, 
+  isInstallable
+}: HeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user.name);
 

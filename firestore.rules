@@ -64,7 +64,7 @@ service cloud.firestore {
       allow create: if isSignedIn() && isValidId(transactionId) && isValidTransaction(incoming()) 
         && incoming().createdAt == request.time;
       allow update: if isOwner(existing()) && isValidTransaction(incoming())
-        && incoming().diff(existing()).affectedKeys().hasOnly(['amount', 'subTotal', 'discount', 'tax', 'advance', 'due', 'items', 'type', 'category', 'paymentMethod', 'workStatus', 'paymentSplit', 'cashReceived', 'changeDue', 'customer', 'note', 'updatedAt'])
+        && incoming().diff(existing()).affectedKeys().hasOnly(['amount', 'subTotal', 'discount', 'tax', 'advance', 'due', 'items', 'type', 'category', 'paymentMethod', 'workStatus', 'paymentSplit', 'cashReceived', 'changeDue', 'customer', 'note', 'date', 'updatedAt'])
         && incoming().updatedAt == request.time
         && incoming().createdAt == existing().createdAt;
       allow delete: if isOwner(existing());

@@ -23,6 +23,31 @@ const COLLECTIONS = {
   SETTINGS: 'settings',
 };
 
+// Helper to remove undefined values which Firestore doesn't support
+function sanitizeData(data: any): any {
+  if (data === null || data === undefined) return data;
+  if (typeof data !== 'object') return data;
+  if (data instanceof Date) return data;
+  
+  // Only recurse into plain objects and arrays
+  const isPlainObject = data.constructor === Object;
+  const isArray = Array.isArray(data);
+
+  if (!isPlainObject && !isArray) return data;
+
+  if (isArray) {
+    return data.map(item => sanitizeData(item));
+  }
+
+  const result: any = {};
+  Object.keys(data).forEach(key => {
+    if (data[key] !== undefined) {
+      result[key] = sanitizeData(data[key]);
+    }
+  });
+  return result;
+}
+
 export const firebaseService = {
   // Transactions
   getTransactions: (userId: string, callback: (transactions: Transaction[]) => void) => {
@@ -46,12 +71,13 @@ export const firebaseService = {
   saveTransaction: async (userId: string, transaction: Transaction) => {
     try {
       const docRef = doc(db, COLLECTIONS.TRANSACTIONS, transaction.id);
-      await setDoc(docRef, {
+      const data = sanitizeData({
         ...transaction,
         userId,
         updatedAt: serverTimestamp(),
         createdAt: transaction.createdAt || serverTimestamp()
       });
+      await setDoc(docRef, data);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, COLLECTIONS.TRANSACTIONS);
     }
@@ -81,10 +107,11 @@ export const firebaseService = {
 
   saveInventoryItem: async (userId: string, item: InventoryItem) => {
     try {
-      await setDoc(doc(db, COLLECTIONS.INVENTORY, item.id), {
+      const data = sanitizeData({
         ...item,
         userId
       });
+      await setDoc(doc(db, COLLECTIONS.INVENTORY, item.id), data);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, COLLECTIONS.INVENTORY);
     }
@@ -114,10 +141,11 @@ export const firebaseService = {
 
   saveWorkHour: async (userId: string, workHour: WorkHour) => {
     try {
-      await setDoc(doc(db, COLLECTIONS.WORK_HOURS, workHour.id), {
+      const data = sanitizeData({
         ...workHour,
         userId
       });
+      await setDoc(doc(db, COLLECTIONS.WORK_HOURS, workHour.id), data);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, COLLECTIONS.WORK_HOURS);
     }
@@ -147,10 +175,11 @@ export const firebaseService = {
 
   savePartUsage: async (userId: string, usage: PartUsage) => {
     try {
-      await setDoc(doc(db, COLLECTIONS.PART_USAGE, usage.id), {
+      const data = sanitizeData({
         ...usage,
         userId
       });
+      await setDoc(doc(db, COLLECTIONS.PART_USAGE, usage.id), data);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, COLLECTIONS.PART_USAGE);
     }
@@ -170,10 +199,11 @@ export const firebaseService = {
   saveCategory: async (userId: string, name: string) => {
     try {
       const id = name.toLowerCase().replace(/\s+/g, '-');
-      await setDoc(doc(db, COLLECTIONS.CATEGORIES, `${userId}_${id}`), {
+      const data = sanitizeData({
         name,
         userId
       });
+      await setDoc(doc(db, COLLECTIONS.CATEGORIES, `${userId}_${id}`), data);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, COLLECTIONS.CATEGORIES);
     }
@@ -195,10 +225,11 @@ export const firebaseService = {
 
   saveTaxRate: async (userId: string, taxRate: number) => {
     try {
-      await setDoc(doc(db, COLLECTIONS.SETTINGS, `${userId}_taxRate`), {
+      const data = sanitizeData({
         taxRate,
         userId
       });
+      await setDoc(doc(db, COLLECTIONS.SETTINGS, `${userId}_taxRate`), data);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, COLLECTIONS.SETTINGS);
     }

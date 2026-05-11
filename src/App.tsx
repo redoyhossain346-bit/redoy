@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { Calendar, Filter, RefreshCw, LogIn, Download } from 'lucide-react';
+import { Calendar, Filter, RefreshCw, LogIn } from 'lucide-react';
 import Header from './components/Header';
 import HeroCard from './components/HeroCard';
 import TransactionForm from './components/TransactionForm';
@@ -232,7 +232,11 @@ export default function App() {
         isOpen: true,
         allowClose: true,
         onSuccess: async () => {
-          const updated: Transaction = { ...newT, id: editingTransaction.id };
+          const updated: Transaction = { 
+            ...newT, 
+            id: editingTransaction.id,
+            createdAt: editingTransaction.createdAt 
+          };
           
           // Log Audit (Client-side sync for now, should ideally be firestore collection too if needed)
           const log = {
@@ -346,27 +350,6 @@ export default function App() {
     }
   };
 
-  const handleBackupData = () => {
-    const backup = {
-      transactions,
-      inventory,
-      workHours,
-      usageHistory,
-      categories,
-      taxRate,
-      exportedAt: new Date().toISOString(),
-      user: user.name
-    };
-    
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `AllCellular_Backup_${format(new Date(), 'yyyy-MM-dd')}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   const handleUpdateUser = (name: string) => {
     setUser({ name });
   };
@@ -455,8 +438,8 @@ export default function App() {
       {!isLoggedIn ? (
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-8">
           <div className="text-center space-y-2">
-            <h2 className="text-2xl font-black text-slate-800 uppercase tracking-widest">Authentication Required</h2>
-            <p className="text-xs text-slate-400 font-medium">Please sign in to access your cellular records and history</p>
+            <h2 className="text-2xl font-black text-slate-800 uppercase tracking-widest">Gmail Verification Required</h2>
+            <p className="text-xs text-slate-400 font-medium">Please sign in with your Gmail account to access terminal data</p>
           </div>
 
           {authError && (
@@ -474,7 +457,7 @@ export default function App() {
             <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:scale-110 transition-transform">
               <LogIn size={20} className="text-slate-600" />
             </div>
-            <span className="text-sm font-black text-slate-800 uppercase tracking-widest">Sign in with Google</span>
+            <span className="text-sm font-black text-slate-800 uppercase tracking-widest">Sign in with Google (Gmail)</span>
           </button>
         </div>
       ) : activeView === 'inventory' ? (
@@ -712,19 +695,9 @@ export default function App() {
       <footer className="mt-8 pt-6 border-t border-slate-200 flex justify-between items-center text-[10px] text-slate-400 font-medium px-2 pb-8">
         <div className="flex items-center gap-4">
             <div className="flex items-center">
-                <span className="flex h-2 w-2 rounded-full bg-emerald-500 mr-2"></span>
-                Operational Systems Secure
+                <span className="flex h-2 w-2 rounded-full bg-emerald-500 mr-2 animate-pulse"></span>
+                Real-time Cloud Sync Active
             </div>
-            {isLoggedIn && (
-              <button 
-                onClick={handleBackupData}
-                className="bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded-md border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all cursor-pointer flex items-center gap-1"
-                title="Save database backup to your PC or Drive"
-              >
-                <Download size={10} />
-                Cloud Backup Sync
-              </button>
-            )}
             {deferredPrompt && (
               <button 
                 onClick={handleInstallClick}
