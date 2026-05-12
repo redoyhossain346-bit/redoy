@@ -312,11 +312,23 @@ export default function InventoryManager({
                 <p className="text-[11px] font-black text-slate-300 uppercase tracking-widest">No matching assets</p>
               </div>
             ) : (
-              filteredInventory.map(item => (
-                <div key={item.id} className={cn(
-                  "p-5 bg-slate-50 border border-slate-200 rounded-2xl flex justify-between items-center group hover:bg-white transition-all duration-300 shadow-sm",
-                  selectedItemIds.includes(item.id) ? "border-amber-500/40 bg-amber-500/5 ring-1 ring-amber-500/10" : "hover:border-amber-500/20"
-                )}>
+              filteredInventory.map((item, idx) => (
+                <motion.div 
+                  key={item.id} 
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ delay: idx * 0.03 }}
+                  whileHover={{ 
+                    rotateX: 2, 
+                    rotateY: -2, 
+                    translateZ: 15,
+                    scale: 1.02
+                  }}
+                  className={cn(
+                    "p-5 bg-slate-50 border border-slate-200 rounded-2xl flex justify-between items-center group hover:bg-white transition-all duration-300 shadow-sm [transform-style:preserve-3d] [perspective:1000px]",
+                    selectedItemIds.includes(item.id) ? "border-amber-500/40 bg-amber-500/5 ring-1 ring-amber-500/10" : "hover:border-amber-500/20"
+                  )}
+                >
                   <div className="flex items-center gap-4">
                     <input 
                       type="checkbox" 
@@ -340,7 +352,7 @@ export default function InventoryManager({
                       <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Threshold: {item.minStock}</div>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))
             )}
           </div>
@@ -357,10 +369,17 @@ export default function InventoryManager({
                 <p className="text-[11px] font-black text-slate-300 uppercase tracking-widest">Archive empty</p>
               </div>
             ) : (
-              usageHistory.map(log => {
+              usageHistory.map((log, idx) => {
                 const part = inventory.find(i => i.id === log.partId);
                 return (
-                  <div key={log.id} className="p-5 bg-slate-50 border border-slate-200 rounded-2xl flex justify-between items-center group hover:bg-white transition-all duration-300 shadow-sm">
+                  <motion.div 
+                    key={log.id} 
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.03 }}
+                    whileHover={{ scale: 1.02, rotateX: -2 }}
+                    className="p-5 bg-slate-50 border border-slate-200 rounded-2xl flex justify-between items-center group hover:bg-white transition-all duration-300 shadow-sm [transform-style:preserve-3d]"
+                  >
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-xl bg-amber-500/5 flex items-center justify-center text-amber-600 border border-amber-500/10">
                         <User size={20} />
@@ -379,7 +398,7 @@ export default function InventoryManager({
                       </div>
                       <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{format(new Date(log.timestamp), 'dd MMM • HH:mm')}</div>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })
             )}

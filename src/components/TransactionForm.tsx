@@ -309,11 +309,16 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
       <AnimatePresence mode="wait">
         <motion.div
           key={currentStep}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-          className="min-h-[400px]"
+          initial={{ opacity: 0, rotateY: 90, scale: 0.9 }}
+          animate={{ opacity: 1, rotateY: 0, scale: 1 }}
+          exit={{ opacity: 0, rotateY: -90, scale: 0.9 }}
+          transition={{ 
+            duration: 0.5, 
+            type: "spring",
+            stiffness: 100,
+            damping: 15
+          }}
+          className="min-h-[400px] [transform-style:preserve-3d]"
         >
           {currentStep === 'Basics' && (
             <div className="space-y-6">

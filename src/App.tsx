@@ -23,6 +23,7 @@ import autoTable from 'jspdf-autotable';
 import { auth, signInWithPopup, googleProvider, signOut } from './lib/firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { firebaseService } from './services/firebaseService';
+import { motion } from 'motion/react';
 
 export default function App() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -436,7 +437,11 @@ export default function App() {
       )}
       
       {!isLoggedIn ? (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-8">
+        <motion.div 
+          initial={{ opacity: 0, rotateX: 20, z: -100 }}
+          animate={{ opacity: 1, rotateX: 0, z: 0 }}
+          className="flex flex-col items-center justify-center min-h-[60vh] gap-8 [perspective:1000px]"
+        >
           <div className="text-center space-y-2">
             <h2 className="text-2xl font-black text-slate-800 uppercase tracking-widest">Gmail Verification Required</h2>
             <p className="text-xs text-slate-400 font-medium">Please sign in with your Gmail account to access terminal data</p>
@@ -459,9 +464,13 @@ export default function App() {
             </div>
             <span className="text-sm font-black text-slate-800 uppercase tracking-widest">Sign in with Google (Gmail)</span>
           </button>
-        </div>
+        </motion.div>
       ) : activeView === 'inventory' ? (
-        <div className="mt-8 min-h-[70vh]">
+        <motion.div 
+          initial={{ opacity: 0, rotateY: -10 }}
+          animate={{ opacity: 1, rotateY: 0 }}
+          className="mt-8 min-h-[70vh] [perspective:1200px]"
+        >
           <InventoryManager 
             inventory={inventory} 
             usageHistory={usageHistory}
@@ -470,27 +479,43 @@ export default function App() {
             onUpdateUsage={handleUpdateUsage}
             onUpdateCategories={handleUpdateCategories}
           />
-        </div>
+        </motion.div>
       ) : activeView === 'hours' ? (
-        <div className="mt-8 min-h-[70vh]">
+        <motion.div 
+          initial={{ opacity: 0, rotateY: 10 }}
+          animate={{ opacity: 1, rotateY: 0 }}
+          className="mt-8 min-h-[70vh] [perspective:1200px]"
+        >
           <WorkHoursTracker 
             workHours={workHours}
             onUpdate={handleUpdateWorkHours}
           />
-        </div>
+        </motion.div>
       ) : activeView === 'daily_log' ? (
-        <div className="mt-8 min-h-[70vh]">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95, rotateX: 5 }}
+          animate={{ opacity: 1, scale: 1, rotateX: 0 }}
+          className="mt-8 min-h-[70vh] [perspective:1200px]"
+        >
           <DailyStatement 
             transactions={transactions}
             workHours={workHours}
           />
-        </div>
+        </motion.div>
       ) : (
-        <>
+        <motion.div 
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="[perspective:1500px]"
+        >
           {/* Top Info Grid: Statement Period & Balance */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-10">
             {/* Statement Period Selection */}
-            <div className="glass-card p-8 flex flex-col justify-between h-[210px] bg-white border-slate-200">
+            <motion.div 
+              whileHover={{ translateZ: 20 }}
+              className="glass-card p-8 flex flex-col justify-between h-[210px] bg-white border-slate-200 [transform-style:preserve-3d]"
+            >
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">
                   <div className="p-4 bg-amber-500/5 rounded-[1.25rem] text-amber-600 border border-amber-500/10 shadow-sm">
@@ -596,7 +621,7 @@ export default function App() {
                   All Time
                 </button>
               </div>
-            </div>
+            </motion.div>
 
             {/* Total Balance Hero Card */}
             <div className="h-[210px]">
@@ -689,7 +714,7 @@ export default function App() {
               />
             </div>
           </div>
-        </>
+        </motion.div>
       )}
 
       <footer className="mt-8 pt-6 border-t border-slate-200 flex justify-between items-center text-[10px] text-slate-400 font-medium px-2 pb-8">

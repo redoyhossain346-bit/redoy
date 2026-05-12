@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { motion } from 'motion/react';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -203,8 +204,15 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
             <p className="text-xs font-black uppercase tracking-widest">Global Log empty</p>
           </div>
         ) : (
-          sortedTransactions.map((t) => (
-            <div key={t.id} className="space-y-1">
+          sortedTransactions.map((t, idx) => (
+            <motion.div 
+              key={t.id} 
+              initial={{ opacity: 0, x: -20, rotateY: -10 }}
+              animate={{ opacity: 1, x: 0, rotateY: 0 }}
+              transition={{ delay: idx * 0.05 }}
+              whileHover={{ translateZ: 10, scale: 1.01 }}
+              className="space-y-1 [transform-style:preserve-3d]"
+            >
               <div className="group flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 hover:border-amber-500/20 transition-all border border-slate-100 shadow-sm">
                 <div className="flex items-center gap-3">
                 <div className={cn(
@@ -366,7 +374,7 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
               </div>
             )}
             </div>
-          </div>
+            </motion.div>
           ))
         )}
       </div>
