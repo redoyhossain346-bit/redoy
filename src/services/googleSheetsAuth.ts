@@ -74,6 +74,11 @@ export const getAccessToken = (): string | null => {
   return cachedAccessToken;
 };
 
+export const clearAccessToken = (): void => {
+  cachedAccessToken = null;
+  sessionStorage.removeItem('gsheets_access_token');
+};
+
 export const logoutGoogle = async () => {
   await signOut(auth);
   cachedAccessToken = null;

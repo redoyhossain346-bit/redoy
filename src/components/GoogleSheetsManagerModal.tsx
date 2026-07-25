@@ -91,7 +91,15 @@ export default function GoogleSheetsManagerModal({
         localStorage.setItem('gsheets_selected_id', files[0].id);
       }
     } catch (err: any) {
-      console.error('Failed to load spreadsheets:', err);
+      console.warn('Failed to load spreadsheets:', err);
+      const msg = err?.message || String(err);
+      if (msg.includes('authentication credentials') || msg.includes('401') || msg.includes('Unauthenticated') || msg.includes('invalid grant')) {
+        setToken(null);
+        setGoogleUser(null);
+        setStatusMessage({ type: 'error', text: 'Google OAuth token expired. Please click "Connect Google Sheets" to re-authenticate.' });
+      } else {
+        setStatusMessage({ type: 'error', text: `Spreadsheet sync error: ${msg}` });
+      }
     } finally {
       setLoading(false);
     }

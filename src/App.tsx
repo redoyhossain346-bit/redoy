@@ -22,7 +22,7 @@ import { format } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { localStorageService } from './services/localStorageService';
-import { getAccessToken } from './services/googleSheetsAuth';
+import { getAccessToken, clearAccessToken } from './services/googleSheetsAuth';
 import { googleSheetsService } from './services/googleSheetsService';
 import { motion } from 'motion/react';
 
@@ -104,8 +104,14 @@ export default function App() {
           });
           const syncTime = new Date().toLocaleTimeString();
           localStorage.setItem('gsheets_last_synced', syncTime);
-        } catch (err) {
-          console.error('Background Google Sheets sync failed:', err);
+        } catch (err: any) {
+          const errMsg = err?.message || String(err);
+          if (errMsg.includes('authentication credentials') || errMsg.includes('401') || errMsg.includes('Unauthenticated') || errMsg.includes('invalid grant')) {
+            clearAccessToken();
+            console.warn('Google Sheets background sync paused: session expired or unauthenticated.');
+          } else {
+            console.error('Background Google Sheets sync failed:', err);
+          }
         }
       }, 2000); // 2 second debounce
 

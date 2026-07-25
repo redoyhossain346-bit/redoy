@@ -1,12 +1,30 @@
 import { Transaction, InventoryItem, WorkHour } from '../types';
 import { formatCurrency } from '../lib/utils';
 import { format } from 'date-fns';
+import { clearAccessToken } from './googleSheetsAuth';
 
 export interface DriveSpreadsheet {
   id: string;
   name: string;
   modifiedTime?: string;
   webViewLink?: string;
+}
+
+async function handleRes(res: Response, defaultMsg: string): Promise<Response> {
+  if (!res.ok) {
+    let message = defaultMsg;
+    try {
+      const json = await res.json();
+      message = json.error?.message || defaultMsg;
+    } catch (_) {
+      // fallback
+    }
+    if (res.status === 401 || message.includes('invalid authentication credentials') || message.includes('Unauthenticated') || message.includes('invalid grant')) {
+      clearAccessToken();
+    }
+    throw new Error(message);
+  }
+  return res;
 }
 
 export const googleSheetsService = {
@@ -22,11 +40,7 @@ export const googleSheetsService = {
         },
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error?.message || 'Failed to list spreadsheets');
-      }
-
+      await handleRes(res, 'Failed to list spreadsheets');
       const data = await res.json();
       return data.files || [];
     } catch (error) {
@@ -61,11 +75,7 @@ export const googleSheetsService = {
         }),
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error?.message || 'Failed to create Google Spreadsheet');
-      }
-
+      await handleRes(res, 'Failed to create Google Spreadsheet');
       const data = await res.json();
       return {
         spreadsheetId: data.spreadsheetId,
@@ -131,11 +141,7 @@ export const googleSheetsService = {
       }
     );
 
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error?.message || 'Failed to write transactions to Google Sheets');
-    }
-
+    await handleRes(res, 'Failed to write transactions to Google Sheets');
     await this.styleSpreadsheet(accessToken, spreadsheetId);
   },
 
@@ -185,11 +191,7 @@ export const googleSheetsService = {
       }
     );
 
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error?.message || 'Failed to write inventory to Google Sheets');
-    }
-
+    await handleRes(res, 'Failed to write inventory to Google Sheets');
     await this.styleSpreadsheet(accessToken, spreadsheetId);
   },
 
@@ -229,10 +231,7 @@ export const googleSheetsService = {
       }
     );
 
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error?.message || 'Failed to write work hours to Google Sheets');
-    }
+    await handleRes(res, 'Failed to write work hours to Google Sheets');
 
     await this.styleSpreadsheet(accessToken, spreadsheetId);
   },
@@ -457,10 +456,7 @@ export const googleSheetsService = {
       }
     );
 
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error?.message || `Failed to read sheet ${sheetName}`);
-    }
+    await handleRes(res, `Failed to read sheet ${sheetName}`);
 
     const data = await res.json();
     const rows = data.values || [];

@@ -101,6 +101,13 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
   const aVal = isSplit ? (sCashVal + sCardVal + sZelleVal) : (parseFloat(advance) || 0);
   
   const [taxEnabled, setTaxEnabled] = useState(true);
+  const [isEditingTax, setIsEditingTax] = useState(false);
+  const [taxRateInput, setTaxRateInput] = useState((currentTaxRate * 100).toString());
+
+  useEffect(() => {
+    setTaxRateInput((currentTaxRate * 100).toString());
+  }, [currentTaxRate]);
+
   const taxMultiplier = taxEnabled ? currentTaxRate : 0;
   const taxVal = parseFloat(((sVal - dVal) * taxMultiplier).toFixed(2));
   const totalAmount = parseFloat((sVal - dVal + taxVal).toFixed(2));
@@ -566,12 +573,78 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
                         <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-16 text-right bg-transparent border-b border-rose-200 font-black text-rose-600 outline-none" />
                       </div>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sales Tax ({(currentTaxRate * 100).toFixed(1)}%)</span>
-                        <button type="button" onClick={() => setTaxEnabled(!taxEnabled)} className={cn("text-[8px] font-black px-2 py-0.5 rounded uppercase", taxEnabled ? "bg-indigo-600 text-white" : "bg-slate-200 text-slate-500")}>{taxEnabled ? 'ON' : 'OFF'}</button>
+                    <div className="flex flex-col gap-1.5 pt-1">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            Sales Tax
+                          </span>
+                          <button 
+                            type="button" 
+                            onClick={() => setTaxEnabled(!taxEnabled)} 
+                            className={cn("text-[8px] font-black px-2 py-0.5 rounded uppercase transition-colors", taxEnabled ? "bg-indigo-600 text-white" : "bg-slate-200 text-slate-500")}
+                          >
+                            {taxEnabled ? 'ON' : 'OFF'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingTax(!isEditingTax)}
+                            className="text-[9px] font-bold text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded border border-amber-200/60 transition-all flex items-center gap-1 cursor-pointer"
+                            title="Customize Tax Rate %"
+                          >
+                            <Edit3 size={10} />
+                            <span>{(currentTaxRate * 100).toFixed(1)}%</span>
+                          </button>
+                        </div>
+                        <span className="text-[10px] font-black text-indigo-600 font-mono">${taxVal.toFixed(2)}</span>
                       </div>
-                      <span className="text-[10px] font-black text-indigo-600 font-mono">${taxVal.toFixed(2)}</span>
+
+                      {isEditingTax && (
+                        <div className="p-2.5 bg-amber-50/80 border border-amber-200/80 rounded-xl space-y-2 animate-in fade-in duration-200">
+                          <div className="flex items-center justify-between gap-2">
+                            <label className="text-[9px] font-black uppercase text-amber-900 tracking-wider">Set Custom Tax %</label>
+                            <div className="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-amber-300 shadow-2xs">
+                              <input
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                max="100"
+                                value={taxRateInput}
+                                onChange={(e) => {
+                                  setTaxRateInput(e.target.value);
+                                  const val = parseFloat(e.target.value);
+                                  if (!isNaN(val) && val >= 0) {
+                                    onUpdateTaxRate(val / 100);
+                                  }
+                                }}
+                                className="w-14 text-right font-black text-xs text-slate-800 outline-none"
+                              />
+                              <span className="text-xs font-black text-amber-700">%</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-amber-200/60">
+                            <span className="text-[8px] font-bold uppercase text-slate-400">Quick Presets:</span>
+                            {[0, 5, 7, 8.1, 8.6, 10].map((preset) => (
+                              <button
+                                key={preset}
+                                type="button"
+                                onClick={() => {
+                                  setTaxRateInput(preset.toString());
+                                  onUpdateTaxRate(preset / 100);
+                                }}
+                                className={cn(
+                                  "text-[8px] font-black px-1.5 py-0.5 rounded transition-all cursor-pointer",
+                                  (currentTaxRate * 100).toFixed(1) === preset.toFixed(1)
+                                    ? "bg-amber-600 text-white"
+                                    : "bg-white border border-amber-200 text-amber-800 hover:bg-amber-100"
+                                )}
+                              >
+                                {preset}%
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="pt-4 border-t border-slate-200 flex justify-between items-center">
                       <span className="text-sm font-black uppercase tracking-widest text-slate-900">Total Amount</span>
