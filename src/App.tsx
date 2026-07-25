@@ -15,25 +15,26 @@ import InventoryManager from './components/InventoryManager';
 import WorkHoursTracker from './components/WorkHoursTracker';
 import SalesSummary from './components/SalesSummary';
 import DailyStatement from './components/DailyStatement';
+import GoogleSheetsManagerModal from './components/GoogleSheetsManagerModal';
 import { Transaction, UserProfile, BudgetSummary, InventoryItem, PartUsage, WorkHour } from './types';
 import { cn, formatCurrency, uuid } from './lib/utils';
 import { format } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { auth, signInWithPopup, googleProvider, signOut } from './lib/firebase';
-import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { firebaseService } from './services/firebaseService';
+import { localStorageService } from './services/localStorageService';
+import { getAccessToken } from './services/googleSheetsAuth';
+import { googleSheetsService } from './services/googleSheetsService';
 import { motion } from 'motion/react';
 
 export default function App() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
-  const [user, setUser] = useState<UserProfile>({ name: 'Guest' });
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [user, setUser] = useState<UserProfile>({ name: 'Terminal Admin' });
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [isGoogleSheetsOpen, setIsGoogleSheetsOpen] = useState(false);
   
   // Passcode Modal State
   const [passcodeModal, setPasscodeModal] = useState<{
@@ -58,38 +59,15 @@ export default function App() {
   const [taxRate, setTaxRate] = useState<number>(0.081);
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (fUser) => {
-      setFirebaseUser(fUser);
-      setIsLoaded(true);
-      if (fUser) {
-        setIsLoggedIn(true);
-        setUser({ name: fUser.displayName || 'Operator' });
-        // Ensure modal closes on successful auth
-        setPasscodeModal(prev => ({ ...prev, isOpen: false }));
-      } else {
-        setIsLoggedIn(false);
-        setUser({ name: 'Guest' });
-      }
-    });
+    // Initial data load from local storage
+    const unsubTransactions = localStorageService.getTransactions(setTransactions);
+    const unsubInventory = localStorageService.getInventory(setInventory);
+    const unsubWorkHours = localStorageService.getWorkHours(setWorkHours);
+    const unsubUsage = localStorageService.getPartUsage(setUsageHistory);
+    const unsubCategories = localStorageService.getCategories(setCategories);
+    const unsubTaxRate = localStorageService.getTaxRate(setTaxRate);
 
-    return () => unsubscribeAuth();
-  }, []);
-
-  useEffect(() => {
-    if (!firebaseUser) {
-      setTransactions([]);
-      setInventory([]);
-      setUsageHistory([]);
-      setWorkHours([]);
-      return;
-    }
-
-    const unsubTransactions = firebaseService.getTransactions(firebaseUser.uid, setTransactions);
-    const unsubInventory = firebaseService.getInventory(firebaseUser.uid, setInventory);
-    const unsubWorkHours = firebaseService.getWorkHours(firebaseUser.uid, setWorkHours);
-    const unsubUsage = firebaseService.getPartUsage(firebaseUser.uid, setUsageHistory);
-    const unsubCategories = firebaseService.getCategories(firebaseUser.uid, setCategories);
-    const unsubTaxRate = firebaseService.getTaxRate(firebaseUser.uid, setTaxRate);
+    setIsLoaded(true);
 
     return () => {
       unsubTransactions();
@@ -99,81 +77,81 @@ export default function App() {
       unsubCategories();
       unsubTaxRate();
     };
-  }, [firebaseUser]);
+  }, []);
+
+  // Automatic background sync to Google Sheets whenever terminal data changes
+  useEffect(() => {
+    if (!isLoaded) return;
+    const isAutoSync = localStorage.getItem('gsheets_auto_sync_enabled') !== 'false';
+    const spreadsheetId = localStorage.getItem('gsheets_selected_id');
+    const token = getAccessToken();
+
+    if (isAutoSync && spreadsheetId && token) {
+      const timer = setTimeout(async () => {
+        try {
+          await googleSheetsService.exportAllData(token, spreadsheetId, {
+            transactions,
+            inventory,
+            workHours,
+          });
+          const syncTime = new Date().toLocaleTimeString();
+          localStorage.setItem('gsheets_last_synced', syncTime);
+        } catch (err) {
+          console.error('Background Google Sheets sync failed:', err);
+        }
+      }, 2000); // 2 second debounce
+
+      return () => clearTimeout(timer);
+    }
+  }, [transactions, inventory, workHours, isLoaded]);
 
   const handleUpdateInventory = async (newInventory: InventoryItem[]) => {
-    if (!firebaseUser) return;
     setInventory(newInventory);
     // Find what changed and save only changed items
     for (const item of newInventory) {
-      await firebaseService.saveInventoryItem(firebaseUser.uid, item);
+      await localStorageService.saveInventoryItem(item);
     }
   };
 
   const handleUpdateUsage = async (newUsage: PartUsage[]) => {
-    if (!firebaseUser) return;
     setUsageHistory(newUsage);
     if (newUsage.length > 0) {
-      await firebaseService.savePartUsage(firebaseUser.uid, newUsage[0]);
+      await localStorageService.savePartUsage(newUsage[0]);
     }
   };
 
   const handleUpdateCategories = async (newCategories: string[]) => {
-    if (!firebaseUser) return;
     setCategories(newCategories);
     const latest = newCategories[newCategories.length - 1];
     if (latest) {
-      await firebaseService.saveCategory(firebaseUser.uid, latest);
+      await localStorageService.saveCategory(latest);
     }
   };
 
   const handleUpdateWorkHours = async (newHours: WorkHour[]) => {
-    if (!firebaseUser) return;
     setWorkHours(newHours);
     if (newHours.length > 0) {
-      await firebaseService.saveWorkHour(firebaseUser.uid, newHours[0]);
+      await localStorageService.saveWorkHour(newHours[0]);
     }
   };
 
   const handleUpdateTaxRate = async (newRate: number) => {
-    if (!firebaseUser) return;
     setTaxRate(newRate);
-    await firebaseService.saveTaxRate(firebaseUser.uid, newRate);
+    await localStorageService.saveTaxRate(newRate);
   };
 
   const lowStockCount = useMemo(() => {
     return inventory.filter(item => item.quantity <= item.minStock).length;
   }, [inventory]);
 
-  const handleLogout = async () => {
-    await signOut(auth);
+  const handleLogout = () => {
     setIsLoggedIn(false);
     sessionStorage.removeItem('glass_budget_session');
-    localStorage.removeItem('keep_logged_in');
     setPasscodeModal({
       isOpen: true,
       onSuccess: () => setIsLoggedIn(true),
       allowClose: false
     });
-  };
-
-  const handleGoogleSignIn = async () => {
-    setAuthError(null);
-    try {
-      await signInWithPopup(auth, googleProvider);
-      setPasscodeModal(prev => ({ ...prev, isOpen: false }));
-    } catch (error: any) {
-      console.error('Login failed', error);
-      let message = 'Login failed';
-      if (error.code === 'auth/unauthorized-domain') {
-        message = `Unauthorized Domain: Please add "${window.location.hostname}" to authorized domains in Firebase Console.`;
-      } else if (error.code === 'auth/popup-blocked') {
-        message = 'Popup blocked by browser. Please allow popups for this site.';
-      } else {
-        message = error.message || 'Unknown authentication error';
-      }
-      setAuthError(message);
-    }
   };
 
   const handleLoginSuccess = () => {
@@ -226,8 +204,6 @@ export default function App() {
   }, [filteredTransactions]);
 
   const handleAddTransaction = async (newT: Omit<Transaction, 'id'>) => {
-    if (!firebaseUser) return;
-    
     if (editingTransaction) {
       setPasscodeModal({
         isOpen: true,
@@ -239,7 +215,7 @@ export default function App() {
             createdAt: editingTransaction.createdAt 
           };
           
-          // Log Audit (Client-side sync for now, should ideally be firestore collection too if needed)
+          // Log Audit
           const log = {
             id: uuid(),
             timestamp: new Date().toISOString(),
@@ -249,7 +225,7 @@ export default function App() {
           };
           
           setAuditLogs(prev => [log, ...prev]);
-          await firebaseService.saveTransaction(firebaseUser.uid, updated);
+          await localStorageService.saveTransaction(updated);
           setEditingTransaction(null);
           setPasscodeModal(prev => ({ ...prev, isOpen: false }));
         }
@@ -259,13 +235,13 @@ export default function App() {
         ...newT,
         id: uuid()
       };
-      await firebaseService.saveTransaction(firebaseUser.uid, transaction);
+      await localStorageService.saveTransaction(transaction);
+      // Manually refresh local state
+      localStorageService.getTransactions(setTransactions);
     }
   };
 
   const handleDeleteTransaction = async (id: string) => {
-    if (!firebaseUser) return;
-    
     setPasscodeModal({
       isOpen: true,
       allowClose: true,
@@ -282,8 +258,10 @@ export default function App() {
         };
 
         setAuditLogs(prev => [log, ...prev]);
-        await firebaseService.deleteTransaction(id);
+        await localStorageService.deleteTransaction(id);
         setPasscodeModal(prev => ({ ...prev, isOpen: false }));
+        // Manually refresh local state
+        localStorageService.getTransactions(setTransactions);
       }
     });
   };
@@ -381,6 +359,7 @@ export default function App() {
         onLogout={handleLogout}
         onInstall={handleInstallClick}
         isInstallable={!!deferredPrompt}
+        onOpenGoogleSheets={() => setIsGoogleSheetsOpen(true)}
       />
       
       <PasscodeModal 
@@ -388,6 +367,14 @@ export default function App() {
         onClose={() => setPasscodeModal(prev => ({ ...prev, isOpen: false }))}
         onSuccess={handleLoginSuccess}
         allowClose={passcodeModal.allowClose}
+      />
+
+      <GoogleSheetsManagerModal
+        isOpen={isGoogleSheetsOpen}
+        onClose={() => setIsGoogleSheetsOpen(false)}
+        transactions={transactions}
+        inventory={inventory}
+        workHours={workHours}
       />
 
       {isLoggedIn && (
@@ -443,26 +430,18 @@ export default function App() {
           className="flex flex-col items-center justify-center min-h-[60vh] gap-8 [perspective:1000px]"
         >
           <div className="text-center space-y-2">
-            <h2 className="text-2xl font-black text-slate-800 uppercase tracking-widest">Gmail Verification Required</h2>
-            <p className="text-xs text-slate-400 font-medium">Please sign in with your Gmail account to access terminal data</p>
+            <h2 className="text-2xl font-black text-slate-800 uppercase tracking-widest">Device Access Locked</h2>
+            <p className="text-xs text-slate-400 font-medium">Please enter your device passcode to unlock local storage</p>
           </div>
 
-          {authError && (
-            <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl max-w-md text-center">
-              <p className="text-rose-500 text-[10px] font-black uppercase tracking-widest leading-relaxed">
-                {authError}
-              </p>
-            </div>
-          )}
-
           <button 
-            onClick={handleGoogleSignIn}
+            onClick={() => setPasscodeModal(prev => ({ ...prev, isOpen: true }))}
             className="flex items-center gap-4 bg-white border border-slate-200 px-8 py-4 rounded-2xl shadow-xl hover:shadow-2xl transition-all active:scale-95 group"
           >
             <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:scale-110 transition-transform">
               <LogIn size={20} className="text-slate-600" />
             </div>
-            <span className="text-sm font-black text-slate-800 uppercase tracking-widest">Sign in with Google (Gmail)</span>
+            <span className="text-sm font-black text-slate-800 uppercase tracking-widest">Unlock Terminal</span>
           </button>
         </motion.div>
       ) : activeView === 'inventory' ? (
@@ -721,7 +700,7 @@ export default function App() {
         <div className="flex items-center gap-4">
             <div className="flex items-center">
                 <span className="flex h-2 w-2 rounded-full bg-emerald-500 mr-2 animate-pulse"></span>
-                Real-time Cloud Sync Active
+                PC Storage Mode Active (Private)
             </div>
             {deferredPrompt && (
               <button 
@@ -734,12 +713,12 @@ export default function App() {
         </div>
         <div className="flex flex-col items-end gap-1">
           <div className="flex space-x-6">
-              <span>Status: Online</span>
-              <span>v2.1.0</span>
-              <span className="text-amber-600">Last backup: Just now</span>
+              <span>Status: Internal</span>
+              <span>v2.2.0-local</span>
+              <span className="text-amber-600">Free to use forever</span>
           </div>
           <div className="text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded-md mt-1 border border-slate-200">
-            Operator: <span className="text-slate-900">Cellular01</span>
+            Storage: <span className="text-slate-900">This PC Only</span>
           </div>
         </div>
       </footer>

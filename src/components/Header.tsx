@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserCircle, Check, Smartphone, MapPin, Phone, Mail, LogOut, LogIn, Download } from 'lucide-react';
+import { UserCircle, Check, Smartphone, MapPin, Phone, Mail, LogOut, LogIn, Download, FileSpreadsheet } from 'lucide-react';
 import { UserProfile } from '../types';
 
 interface HeaderProps {
@@ -10,6 +10,7 @@ interface HeaderProps {
   onLogout: () => void;
   onInstall?: () => void;
   isInstallable?: boolean;
+  onOpenGoogleSheets?: () => void;
 }
 
 export default function Header({ 
@@ -19,7 +20,8 @@ export default function Header({
   onLogin, 
   onLogout, 
   onInstall, 
-  isInstallable
+  isInstallable,
+  onOpenGoogleSheets
 }: HeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user.name);
@@ -83,6 +85,17 @@ export default function Header({
 
       {/* Header Right Corner Items */}
       <div className="flex items-center gap-3 lg:absolute lg:right-0 lg:top-1/2 lg:-translate-y-1/2">
+        {onOpenGoogleSheets && (
+          <button
+            onClick={onOpenGoogleSheets}
+            className="flex flex-col items-center justify-center h-12 px-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all cursor-pointer group shadow-lg shadow-emerald-500/10"
+            title="Google Sheets Sync & Export"
+          >
+            <FileSpreadsheet size={16} />
+            <span className="text-[8px] font-black mt-0.5 uppercase tracking-wider">Sheets</span>
+          </button>
+        )}
+
         <div className="flex items-center gap-4 bg-white p-2.5 px-5 rounded-2xl border border-slate-100 shadow-sm">
           <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-200">
             <UserCircle size={20} className="text-slate-400" />
@@ -116,19 +129,19 @@ export default function Header({
           <button 
             onClick={onLogout}
             className="flex flex-col items-center justify-center w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500 hover:text-white transition-all cursor-pointer group shadow-xl shadow-rose-500/10"
-            title="Logout"
+            title="Lock Terminal"
           >
             <LogOut size={16} />
-            <span className="text-[8px] font-black mt-0.5">OFF</span>
+            <span className="text-[8px] font-black mt-0.5">LOCK</span>
           </button>
         ) : (
           <button 
             onClick={onLogin}
             className="flex flex-col items-center justify-center w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all cursor-pointer group shadow-xl shadow-emerald-500/10"
-            title="Login"
+            title="Unlock Terminal"
           >
             <LogIn size={16} />
-            <span className="text-[8px] font-black mt-0.5">IN</span>
+            <span className="text-[8px] font-black mt-0.5">OPEN</span>
           </button>
         )}
       </div>

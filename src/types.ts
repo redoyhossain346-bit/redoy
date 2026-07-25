@@ -88,6 +88,7 @@ export interface InventoryItem {
   quantity: number;
   price: number;
   minStock: number;
+  serialNumber?: string;
 }
 
 export interface PartUsage {

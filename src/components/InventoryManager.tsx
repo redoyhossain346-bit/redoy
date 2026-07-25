@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, Minus, History, User, AlertTriangle, Search, Filter, ClipboardList, X, RotateCcw, Edit2, Trash2, Check, AlertCircle } from 'lucide-react';
+import { Package, Plus, Minus, History, User, AlertTriangle, Search, Filter, ClipboardList, X, RotateCcw, Edit2, Trash2, Check, AlertCircle, FileSpreadsheet, FileText } from 'lucide-react';
 import { InventoryItem, PartUsage } from '../types';
-import { cn, uuid } from '../lib/utils';
+import { cn, uuid, formatCurrency } from '../lib/utils';
 import { format } from 'date-fns';
 import { AnimatePresence, motion } from 'motion/react';
+import ExcelJS from 'exceljs';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface InventoryManagerProps {
   inventory: InventoryItem[];
@@ -39,7 +42,8 @@ export default function InventoryManager({
     category: categories[0] || 'Uncategorized',
     quantity: 0,
     price: 0,
-    minStock: 2
+    minStock: 2,
+    serialNumber: ''
   });
 
   useEffect(() => {
@@ -122,7 +126,14 @@ export default function InventoryManager({
     };
     onUpdateInventory([...inventory, item]);
     setIsAddingItem(false);
-    setNewItem({ name: '', category: categories[0] || 'Uncategorized', quantity: 0, price: 0, minStock: 2 });
+    setNewItem({ 
+      name: '', 
+      category: categories[0] || 'Uncategorized', 
+      quantity: 0, 
+      price: 0, 
+      minStock: 2,
+      serialNumber: ''
+    });
   };
 
   const handleTakePart = (e: React.FormEvent) => {
@@ -187,7 +198,8 @@ export default function InventoryManager({
   const filteredInventory = inventory.filter(item => 
     item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.id.toLowerCase().includes(searchQuery.toLowerCase())
+    item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (item.serialNumber && item.serialNumber.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const toggleSelectItem = (id: string) => {
@@ -210,6 +222,67 @@ export default function InventoryManager({
     setSelectedItemIds([]);
     setShowBulkDeleteConfirm(false);
     setNotification({ message: `Purged ${selectedItemIds.length} assets from registry`, type: 'success' });
+  };
+
+  const exportInventoryExcel = async () => {
+    const wsData = inventory.map(item => ({
+      Name: item.name,
+      Category: item.category,
+      Quantity: item.quantity,
+      'Unit Price': item.price,
+      'Total Value': item.price * item.quantity,
+      'Min Threshold': item.minStock,
+      'Serial Number': item.serialNumber || '',
+      'Status': item.quantity <= item.minStock ? 'LOW STOCK' : 'OK'
+    }));
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Inventory');
+    
+    if (wsData.length > 0) {
+      worksheet.columns = Object.keys(wsData[0]).map(key => ({ header: key, key: key, width: 15 }));
+      worksheet.addRows(wsData);
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Inventory_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    }
+  };
+
+  const exportInventoryPDF = () => {
+    const doc = new jsPDF('p', 'pt', 'a4');
+    doc.setTextColor(40, 40, 40);
+    doc.setFontSize(18);
+    doc.text("Master Asset Registry Report", 40, 40);
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${format(new Date(), 'dd MMM yyyy, hh:mm a')}`, 40, 55);
+
+    const tableData = inventory.map(item => [
+      item.name,
+      item.category,
+      item.quantity,
+      formatCurrency(item.price),
+      formatCurrency(item.price * item.quantity),
+      item.serialNumber || '-'
+    ]);
+
+    autoTable(doc, {
+      startY: 70,
+      head: [['Asset Name', 'Category', 'Qty', 'Unit Price', 'Value', 'Serial/Tag']],
+      body: tableData,
+      theme: 'striped',
+      headStyles: { fillColor: [245, 158, 11], textColor: 255 },
+      styles: { fontSize: 8 }
+    });
+
+    doc.save(`Inventory_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };
 
   return (
@@ -244,6 +317,24 @@ export default function InventoryManager({
             <Filter size={16} />
             Categories
           </button>
+          
+          <div className="flex h-12 gap-1 bg-slate-50 p-1 rounded-2xl border border-slate-200">
+            <button 
+              onClick={exportInventoryExcel}
+              className="flex items-center justify-center w-10 h-10 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+              title="Export Inventory Excel"
+            >
+              <FileSpreadsheet size={18} />
+            </button>
+            <button 
+              onClick={exportInventoryPDF}
+              className="flex items-center justify-center w-10 h-10 text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+              title="Export Inventory PDF"
+            >
+              <FileText size={18} />
+            </button>
+          </div>
+
           <button 
             onClick={() => setIsReturningPart(true)}
             className="flex-1 sm:flex-none px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-[0_5px_15px_rgba(5,150,105,0.2)] flex items-center justify-center gap-3"
@@ -338,7 +429,14 @@ export default function InventoryManager({
                     />
                     <div className="flex flex-col gap-1">
                       <span className="text-sm font-black text-slate-800 uppercase tracking-tight">{item.name}</span>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.category}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.category}</span>
+                        {item.serialNumber && (
+                          <span className="text-[9px] font-black text-amber-600/60 bg-amber-500/5 px-2 py-0.5 rounded-md border border-amber-500/10 uppercase tracking-tighter">
+                            SN: {item.serialNumber}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-6">
@@ -537,6 +635,15 @@ export default function InventoryManager({
                   value={newItem.minStock}
                   onChange={e => setNewItem({...newItem, minStock: parseInt(e.target.value) || 0})}
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 text-sm font-black text-slate-900 focus:outline-none focus:border-amber-500/40 shadow-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Serial Number / Asset Tag</label>
+                <input 
+                  value={newItem.serialNumber}
+                  onChange={e => setNewItem({...newItem, serialNumber: e.target.value})}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 text-sm font-black text-slate-900 focus:outline-none focus:border-amber-500/40 uppercase tracking-widest placeholder:text-slate-300 shadow-sm"
+                  placeholder="OPTIONAL SN..."
                 />
               </div>
               <div className="flex gap-4 pt-6">

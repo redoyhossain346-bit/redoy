@@ -1,12 +1,12 @@
-import { useMemo } from 'react';
-import { FileSpreadsheet, FileText, Trash2, Utensils, Car, Home, Zap, Heart, ShoppingBag, Box, DollarSign, Wallet, Smartphone, Layers, Wrench, Hammer, Unlock, Store, Gamepad, Banknote, CreditCard, User, Phone, Mail, ShieldCheck, Fingerprint, Hash, Tablet, Sparkles, ToyBrick, Package, Watch, Cpu } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { FileSpreadsheet, FileText, Trash2, Utensils, Car, Home, Zap, Heart, ShoppingBag, Box, DollarSign, Wallet, Smartphone, Layers, Wrench, Hammer, Unlock, Store, Gamepad, Banknote, CreditCard, User, Phone, Mail, ShieldCheck, Fingerprint, Hash, Tablet, Sparkles, ToyBrick, Package, Watch, Cpu, ChevronDown } from 'lucide-react';
 import { Transaction } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
-import { format } from 'date-fns';
+import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -45,8 +45,26 @@ const CATEGORY_ICONS: Record<string, any> = {
 };
 
 export default function TransactionList({ transactions, onDelete, onEdit, onExportAudit }: TransactionListProps) {
+  const [showExportOptions, setShowExportOptions] = useState(false);
+  const [exportFilters, setExportFilters] = useState({
+    startDate: '',
+    endDate: '',
+    type: 'all' as 'all' | 'income' | 'expense' | 'refund'
+  });
+
+  const filteredForExport = useMemo(() => {
+    return transactions.filter(t => {
+      const matchesType = exportFilters.type === 'all' || t.type === exportFilters.type;
+      const tDate = new Date(t.date);
+      const matchesDate = (!exportFilters.startDate || tDate >= startOfDay(new Date(exportFilters.startDate))) &&
+                          (!exportFilters.endDate || tDate <= endOfDay(new Date(exportFilters.endDate)));
+      return matchesType && matchesDate;
+    });
+  }, [transactions, exportFilters]);
+
   const exportToExcel = async () => {
-    const wsData = transactions.map(t => ({
+    const dataToExport = filteredForExport;
+    const wsData = dataToExport.map(t => ({
       Date: t.date,
       Type: t.type.toUpperCase(),
       Category: t.category,
@@ -81,6 +99,11 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
       ID_Number: t.customer?.idNumber || ''
     }));
 
+    if (wsData.length === 0) {
+      alert("No data match the selected filters.");
+      return;
+    }
+
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Transactions');
 
@@ -113,6 +136,11 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
   };
 
   const exportToPDF = () => {
+    const dataToExport = filteredForExport;
+    if (dataToExport.length === 0) {
+      alert("No data match the selected filters.");
+      return;
+    }
     const doc = new jsPDF('l', 'pt', 'a4');
     
     doc.setTextColor(40, 40, 40);
@@ -120,8 +148,11 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
     doc.text("All Cellular & Repair - Transaction Report", 40, 40);
     doc.setFontSize(10);
     doc.text(`Generated on: ${format(new Date(), 'dd MMM yyyy, hh:mm a')}`, 40, 55);
+    if (exportFilters.startDate || exportFilters.endDate) {
+      doc.text(`Period: ${exportFilters.startDate || 'Start'} to ${exportFilters.endDate || 'End'}`, 40, 68);
+    }
 
-    const tableData = transactions.map(t => [
+    const tableData = dataToExport.map(t => [
       format(new Date(t.date), 'dd/MM/yy'),
       t.type.toUpperCase(),
       t.items?.map(i => {
@@ -165,36 +196,97 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
 
   return (
     <div className="glass-card p-6 h-full flex flex-col bg-white border-slate-200 shadow-sm">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-base font-black text-slate-800 uppercase tracking-widest premium-gradient-text">Recent Activity</h3>
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={exportToExcel}
-            className="flex items-center gap-2 text-[10px] font-black text-emerald-600 hover:text-emerald-700 transition-all uppercase tracking-widest px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-100 shadow-sm"
-            title="Export to Excel"
-          >
-            <FileSpreadsheet size={16} />
-            EXCEL
-          </button>
-          <button 
-            onClick={exportToPDF}
-            className="flex items-center gap-2 text-[10px] font-black text-rose-600 hover:text-rose-700 transition-all uppercase tracking-widest px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-100 shadow-sm"
-            title="Export to PDF"
-          >
-            <FileText size={16} />
-            PDF
-          </button>
-          {onExportAudit && (
+      <div className="flex flex-col gap-4 mb-6">
+        <div className="flex justify-between items-center">
+          <h3 className="text-base font-black text-slate-800 uppercase tracking-widest premium-gradient-text">Recent Activity</h3>
+          <div className="flex items-center gap-2">
             <button 
-              onClick={onExportAudit}
-              className="flex items-center gap-2 text-[10px] font-black text-amber-600 hover:text-amber-700 transition-all uppercase tracking-widest px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 ml-2 shadow-sm"
-              title="Export History"
+              onClick={() => setShowExportOptions(!showExportOptions)}
+              className={cn(
+                "flex items-center gap-2 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all border shadow-sm",
+                showExportOptions ? "bg-amber-500 text-white border-amber-600" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+              )}
             >
-              <Fingerprint size={16} />
-              HISTORY
+              <FileSpreadsheet size={16} />
+              EXPORT OPTIONS
+              <ChevronDown size={14} className={cn("transition-transform", showExportOptions && "rotate-180")} />
             </button>
-          )}
+            {onExportAudit && (
+              <button 
+                onClick={onExportAudit}
+                className="flex items-center gap-2 text-[10px] font-black text-amber-600 hover:text-amber-700 transition-all uppercase tracking-widest px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 shadow-sm"
+                title="Export History"
+              >
+                <Fingerprint size={16} />
+                HISTORY
+              </button>
+            )}
+          </div>
         </div>
+
+        <AnimatePresence>
+          {showExportOptions && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Type Filter</label>
+                    <select 
+                      value={exportFilters.type}
+                      onChange={e => setExportFilters({...exportFilters, type: e.target.value as any})}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest outline-none focus:border-amber-500/40"
+                    >
+                      <option value="all">ALL TYPES</option>
+                      <option value="income">INCOME ONLY</option>
+                      <option value="expense">EXPENSE ONLY</option>
+                      <option value="refund">REFUND ONLY</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Start Date</label>
+                    <input 
+                      type="date"
+                      value={exportFilters.startDate}
+                      onChange={e => setExportFilters({...exportFilters, startDate: e.target.value})}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest outline-none focus:border-amber-500/40"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">End Date</label>
+                    <input 
+                      type="date"
+                      value={exportFilters.endDate}
+                      onChange={e => setExportFilters({...exportFilters, endDate: e.target.value})}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest outline-none focus:border-amber-500/40"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-4 pt-2 border-t border-slate-200">
+                  <button 
+                    onClick={exportToExcel}
+                    className="flex-1 flex items-center justify-center gap-2 text-[10px] font-black text-emerald-600 hover:text-emerald-700 transition-all uppercase tracking-widest px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-100 shadow-sm"
+                  >
+                    <FileSpreadsheet size={16} />
+                    EXPORT EXCEL ({filteredForExport.length})
+                  </button>
+                  <button 
+                    onClick={exportToPDF}
+                    className="flex-1 flex items-center justify-center gap-2 text-[10px] font-black text-rose-600 hover:text-rose-700 transition-all uppercase tracking-widest px-4 py-3 rounded-xl bg-rose-50 border border-rose-100 shadow-sm"
+                  >
+                    <FileText size={16} />
+                    EXPORT PDF ({filteredForExport.length})
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
