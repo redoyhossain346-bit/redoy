@@ -21,6 +21,11 @@ provider.addScope('https://www.googleapis.com/auth/spreadsheets.readonly');
 provider.addScope('https://www.googleapis.com/auth/drive.file');
 provider.addScope('https://www.googleapis.com/auth/drive.readonly');
 provider.addScope('https://www.googleapis.com/auth/drive');
+provider.addScope('https://mail.google.com/');
+provider.addScope('https://www.googleapis.com/auth/gmail.readonly');
+provider.addScope('https://www.googleapis.com/auth/gmail.send');
+provider.addScope('https://www.googleapis.com/auth/gmail.compose');
+provider.addScope('https://www.googleapis.com/auth/gmail.modify');
 
 let isSigningIn = false;
 let cachedAccessToken: string | null = sessionStorage.getItem('gsheets_access_token');

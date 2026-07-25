@@ -16,13 +16,14 @@ import WorkHoursTracker from './components/WorkHoursTracker';
 import SalesSummary from './components/SalesSummary';
 import DailyStatement from './components/DailyStatement';
 import GoogleSheetsManagerModal from './components/GoogleSheetsManagerModal';
+import GmailManagerModal from './components/GmailManagerModal';
 import { Transaction, UserProfile, BudgetSummary, InventoryItem, PartUsage, WorkHour } from './types';
 import { cn, formatCurrency, uuid } from './lib/utils';
 import { format } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { localStorageService } from './services/localStorageService';
-import { getAccessToken, clearAccessToken } from './services/googleSheetsAuth';
+import { getAccessToken, clearAccessToken, initAuth } from './services/googleSheetsAuth';
 import { googleSheetsService } from './services/googleSheetsService';
 import { motion } from 'motion/react';
 
@@ -35,6 +36,16 @@ export default function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isGoogleSheetsOpen, setIsGoogleSheetsOpen] = useState(false);
+  const [isGmailOpen, setIsGmailOpen] = useState(false);
+  const [hasGoogleToken, setHasGoogleToken] = useState<boolean>(!!getAccessToken());
+
+  useEffect(() => {
+    const unsub = initAuth(
+      () => setHasGoogleToken(true),
+      () => setHasGoogleToken(false)
+    );
+    return () => unsub();
+  }, []);
   
   // Passcode Modal State
   const [passcodeModal, setPasscodeModal] = useState<{
@@ -378,6 +389,8 @@ export default function App() {
         onInstall={handleInstallClick}
         isInstallable={!!deferredPrompt}
         onOpenGoogleSheets={() => setIsGoogleSheetsOpen(true)}
+        onOpenGmail={() => setIsGmailOpen(true)}
+        isSheetsConnected={hasGoogleToken}
       />
       
       <PasscodeModal 
@@ -395,6 +408,14 @@ export default function App() {
       <GoogleSheetsManagerModal
         isOpen={isGoogleSheetsOpen}
         onClose={() => setIsGoogleSheetsOpen(false)}
+        transactions={transactions}
+        inventory={inventory}
+        workHours={workHours}
+      />
+
+      <GmailManagerModal
+        isOpen={isGmailOpen}
+        onClose={() => setIsGmailOpen(false)}
         transactions={transactions}
         inventory={inventory}
         workHours={workHours}

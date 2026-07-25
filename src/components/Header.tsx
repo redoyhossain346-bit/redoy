@@ -11,6 +11,9 @@ interface HeaderProps {
   onInstall?: () => void;
   isInstallable?: boolean;
   onOpenGoogleSheets?: () => void;
+  onOpenGmail?: () => void;
+  isSheetsConnected?: boolean;
+  isGmailConnected?: boolean;
 }
 
 export default function Header({ 
@@ -21,7 +24,10 @@ export default function Header({
   onLogout, 
   onInstall, 
   isInstallable,
-  onOpenGoogleSheets
+  onOpenGoogleSheets,
+  onOpenGmail,
+  isSheetsConnected = false,
+  isGmailConnected = false
 }: HeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user.name);
@@ -32,19 +38,108 @@ export default function Header({
   };
 
   return (
-    <header className="relative flex flex-col items-center py-6 md:py-8 gap-6 border-b border-slate-100 mb-8 pb-8 text-center bg-gradient-to-b from-slate-50 to-transparent">
-      {/* Installation Badge */}
-      {isInstallable && onInstall && (
-        <button 
-          onClick={onInstall}
-          className="absolute left-0 top-0 mt-4 flex items-center gap-2 bg-amber-500 text-white px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-500/20 hover:scale-105 active:scale-95 transition-all z-10 animate-bounce hover:animate-none"
-        >
-          <Download size={14} />
-          Install Desktop App
-        </button>
-      )}
+    <header className="w-full mb-8 pb-6 border-b border-slate-200/80 bg-gradient-to-b from-slate-50/80 to-transparent rounded-b-3xl px-4 sm:px-6 py-4 shadow-2xs">
+      {/* Top Admin Utility Bar */}
+      <div className="w-full flex items-center justify-between gap-3 pb-3.5 mb-4 border-b border-slate-200/60 flex-wrap sm:flex-nowrap">
+        {/* Left Side: App Install button or Terminal Badge */}
+        <div className="flex items-center gap-2">
+          {isInstallable && onInstall ? (
+            <button 
+              onClick={onInstall}
+              className="flex items-center gap-1.5 bg-amber-500 text-white px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-md hover:bg-amber-600 hover:scale-105 active:scale-95 transition-all"
+            >
+              <Download size={13} />
+              <span>Install App</span>
+            </button>
+          ) : (
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-2.5 py-1 bg-slate-100 rounded-lg border border-slate-200/60">
+              Admin Terminal
+            </span>
+          )}
+        </div>
 
-      <div className="flex flex-col items-center gap-4">
+        {/* Right Side: Quick Action Toolbar (Gmail, Sheets, Admin Profile, Lock/Unlock) */}
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
+          {onOpenGmail && (
+            <button
+              onClick={onOpenGmail}
+              className="flex items-center gap-1.5 h-9 px-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 hover:bg-red-600 hover:text-white transition-all cursor-pointer shadow-2xs text-xs font-black uppercase tracking-wider"
+              title="Gmail Manager & Email Reports"
+            >
+              <Mail size={14} />
+              <span>Gmail</span>
+            </button>
+          )}
+
+          {onOpenGoogleSheets && (
+            <button
+              onClick={onOpenGoogleSheets}
+              className={`flex items-center gap-1.5 h-9 px-3 rounded-xl border transition-all cursor-pointer shadow-2xs text-xs font-black uppercase tracking-wider ${
+                isSheetsConnected
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 hover:bg-emerald-600 hover:text-white'
+                  : 'bg-amber-500/10 border-amber-500/30 text-amber-600 hover:bg-amber-500 hover:text-white'
+              }`}
+              title="Google Sheets Sign In, Setup & Auto Sync"
+            >
+              <FileSpreadsheet size={14} />
+              <span className={`w-2 h-2 rounded-full ${isSheetsConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+              <span>{isSheetsConnected ? 'Sheets Sync' : 'Sheets Setup'}</span>
+            </button>
+          )}
+
+          {/* Admin User Card */}
+          <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-xl border border-slate-200 shadow-2xs h-9">
+            <UserCircle size={18} className="text-slate-400 shrink-0" />
+            <div className="text-left">
+              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Admin</p>
+              <div className="text-xs font-black text-slate-900 leading-tight uppercase tracking-tight">
+                {isEditing ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="bg-transparent border-b border-amber-500 focus:outline-none w-20 text-xs font-bold"
+                      autoFocus
+                    />
+                    <button onClick={handleSave} className="text-emerald-600">
+                      <Check size={12} />
+                    </button>
+                  </div>
+                ) : (
+                  <span className="cursor-pointer hover:text-amber-600 transition-colors" onClick={() => setIsEditing(true)}>
+                    {user.name}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Lock / Unlock Terminal Button */}
+          {isLoggedIn ? (
+            <button 
+              onClick={onLogout}
+              className="flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 hover:bg-rose-600 hover:text-white transition-all cursor-pointer shadow-2xs text-xs font-black uppercase tracking-wider"
+              title="Lock Terminal"
+            >
+              <LogOut size={14} />
+              <span>Lock</span>
+            </button>
+          ) : (
+            <button 
+              onClick={onLogin}
+              className="flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all cursor-pointer shadow-2xs text-xs font-black uppercase tracking-wider"
+              title="Unlock Terminal"
+            >
+              <LogIn size={14} />
+              <span>Unlock</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Main Store Branding Header */}
+      <div className="flex flex-col items-center gap-4 text-center pt-2">
         <div className="w-16 h-16 rounded-[1.75rem] bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 flex items-center justify-center shadow-[0_10px_30px_rgba(245,158,11,0.2)] shrink-0 overflow-hidden border border-white/20 p-1.5 rotate-3">
           <svg viewBox="0 0 100 100" className="w-full h-full text-black" fill="currentColor">
             {/* Phone Body */}
@@ -60,7 +155,7 @@ export default function Header({
             <circle cx="58" cy="45" r="4" fill="currentColor" />
           </svg>
         </div>
-        <div className="space-y-4">
+        <div className="space-y-3">
           <h1 className="text-3xl md:text-5xl font-black tracking-tighter italic leading-none premium-gradient-text uppercase pr-1 md:pr-2">
             All <span className="gold-gradient-text">Cellular</span> & <span className="gold-gradient-text">Repair</span>
           </h1>
@@ -81,69 +176,6 @@ export default function Header({
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Header Right Corner Items */}
-      <div className="flex items-center gap-3 lg:absolute lg:right-0 lg:top-1/2 lg:-translate-y-1/2">
-        {onOpenGoogleSheets && (
-          <button
-            onClick={onOpenGoogleSheets}
-            className="flex flex-col items-center justify-center h-12 px-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all cursor-pointer group shadow-lg shadow-emerald-500/10"
-            title="Google Sheets Sync & Export"
-          >
-            <FileSpreadsheet size={16} />
-            <span className="text-[8px] font-black mt-0.5 uppercase tracking-wider">Sheets</span>
-          </button>
-        )}
-
-        <div className="flex items-center gap-4 bg-white p-2.5 px-5 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-200">
-            <UserCircle size={20} className="text-slate-400" />
-          </div>
-          <div className="text-left min-w-[100px]">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Admin</p>
-            <div className="text-sm font-black text-slate-900 leading-tight uppercase tracking-tight">
-              {isEditing ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="bg-transparent border-b border-amber-500/50 focus:outline-none w-24"
-                    autoFocus
-                  />
-                  <button onClick={handleSave} className="text-emerald-400">
-                    <Check size={14} />
-                  </button>
-                </div>
-              ) : (
-                <span className="cursor-pointer hover:text-amber-400 transition-colors" onClick={() => setIsEditing(true)}>
-                  {user.name}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {isLoggedIn ? (
-          <button 
-            onClick={onLogout}
-            className="flex flex-col items-center justify-center w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500 hover:text-white transition-all cursor-pointer group shadow-xl shadow-rose-500/10"
-            title="Lock Terminal"
-          >
-            <LogOut size={16} />
-            <span className="text-[8px] font-black mt-0.5">LOCK</span>
-          </button>
-        ) : (
-          <button 
-            onClick={onLogin}
-            className="flex flex-col items-center justify-center w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all cursor-pointer group shadow-xl shadow-emerald-500/10"
-            title="Unlock Terminal"
-          >
-            <LogIn size={16} />
-            <span className="text-[8px] font-black mt-0.5">OPEN</span>
-          </button>
-        )}
       </div>
     </header>
   );
