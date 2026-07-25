@@ -15,6 +15,7 @@ interface InventoryManagerProps {
   onUpdateInventory: (inventory: InventoryItem[]) => void;
   onUpdateUsage: (usageHistory: PartUsage[]) => void;
   onUpdateCategories: (categories: string[]) => void;
+  onRequestPasscode?: (onConfirm: () => void, title?: string, description?: string) => void;
 }
 
 export default function InventoryManager({ 
@@ -23,7 +24,8 @@ export default function InventoryManager({
   categories,
   onUpdateInventory, 
   onUpdateUsage,
-  onUpdateCategories
+  onUpdateCategories,
+  onRequestPasscode
 }: InventoryManagerProps) {
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [isTakingPart, setIsTakingPart] = useState(false);
@@ -76,8 +78,20 @@ export default function InventoryManager({
       return;
     }
 
-    onUpdateCategories(categories.filter(c => c !== cat));
-    setNotification({ message: 'Category removed!', type: 'success' });
+    const doDelete = () => {
+      onUpdateCategories(categories.filter(c => c !== cat));
+      setNotification({ message: 'Category removed!', type: 'success' });
+    };
+
+    if (onRequestPasscode) {
+      onRequestPasscode(
+        doDelete,
+        'Delete Category',
+        `Enter User ID & Password to delete category "${cat}"`
+      );
+    } else {
+      doDelete();
+    }
   };
 
   const handleStartEdit = (cat: string) => {
@@ -217,11 +231,23 @@ export default function InventoryManager({
   };
 
   const handleBulkDelete = () => {
-    const updatedInventory = inventory.filter(item => !selectedItemIds.includes(item.id));
-    onUpdateInventory(updatedInventory);
-    setSelectedItemIds([]);
-    setShowBulkDeleteConfirm(false);
-    setNotification({ message: `Purged ${selectedItemIds.length} assets from registry`, type: 'success' });
+    const doDelete = () => {
+      const updatedInventory = inventory.filter(item => !selectedItemIds.includes(item.id));
+      onUpdateInventory(updatedInventory);
+      setSelectedItemIds([]);
+      setShowBulkDeleteConfirm(false);
+      setNotification({ message: `Purged ${selectedItemIds.length} assets from registry`, type: 'success' });
+    };
+
+    if (onRequestPasscode) {
+      onRequestPasscode(
+        doDelete,
+        'Purge Inventory Assets',
+        `Enter User ID & Password to delete ${selectedItemIds.length} selected assets`
+      );
+    } else {
+      doDelete();
+    }
   };
 
   const exportInventoryExcel = async () => {

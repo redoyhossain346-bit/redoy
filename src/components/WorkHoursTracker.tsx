@@ -7,9 +7,10 @@ import { cn, uuid } from '../lib/utils';
 interface WorkHoursTrackerProps {
   workHours: WorkHour[];
   onUpdate: (hours: WorkHour[]) => void;
+  onRequestPasscode?: (onConfirm: () => void, title?: string, description?: string) => void;
 }
 
-export default function WorkHoursTracker({ workHours, onUpdate }: WorkHoursTrackerProps) {
+export default function WorkHoursTracker({ workHours, onUpdate, onRequestPasscode }: WorkHoursTrackerProps) {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [hours, setHours] = useState('');
   const [note, setNote] = useState('');
@@ -32,7 +33,16 @@ export default function WorkHoursTracker({ workHours, onUpdate }: WorkHoursTrack
   };
 
   const handleDelete = (id: string) => {
-    onUpdate(workHours.filter(h => h.id !== id));
+    const doDelete = () => onUpdate(workHours.filter(h => h.id !== id));
+    if (onRequestPasscode) {
+      onRequestPasscode(
+        doDelete,
+        'Delete Shift Log',
+        'Enter User ID & Password to confirm shift log deletion'
+      );
+    } else {
+      doDelete();
+    }
   };
 
   const totalHours = workHours.reduce((acc, curr) => acc + curr.hours, 0);

@@ -31,7 +31,7 @@ export default function App() {
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [user, setUser] = useState<UserProfile>({ name: 'Terminal Admin' });
   const [isLoaded, setIsLoaded] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isGoogleSheetsOpen, setIsGoogleSheetsOpen] = useState(false);
@@ -41,7 +41,15 @@ export default function App() {
     isOpen: boolean;
     onSuccess: () => void;
     allowClose?: boolean;
-  }>({ isOpen: true, onSuccess: () => setIsLoggedIn(true), allowClose: false });
+    title?: string;
+    description?: string;
+  }>({ 
+    isOpen: false, 
+    onSuccess: () => {}, 
+    allowClose: true,
+    title: 'Confirm Deletion',
+    description: 'Enter User ID & Password to confirm deletion'
+  });
   
   // Statement Filtering
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7)); // YYYY-MM
@@ -203,33 +211,38 @@ export default function App() {
     };
   }, [filteredTransactions]);
 
+  const onRequestPasscode = (onConfirm: () => void, title?: string, description?: string) => {
+    setPasscodeModal({
+      isOpen: true,
+      allowClose: true,
+      title: title || 'Confirm Deletion',
+      description: description || 'Enter User ID & Password to confirm deletion',
+      onSuccess: () => {
+        onConfirm();
+      }
+    });
+  };
+
   const handleAddTransaction = async (newT: Omit<Transaction, 'id'>) => {
     if (editingTransaction) {
-      setPasscodeModal({
-        isOpen: true,
-        allowClose: true,
-        onSuccess: async () => {
-          const updated: Transaction = { 
-            ...newT, 
-            id: editingTransaction.id,
-            createdAt: editingTransaction.createdAt 
-          };
-          
-          // Log Audit
-          const log = {
-            id: uuid(),
-            timestamp: new Date().toISOString(),
-            action: 'EDIT',
-            originalData: editingTransaction,
-            newData: updated
-          };
-          
-          setAuditLogs(prev => [log, ...prev]);
-          await localStorageService.saveTransaction(updated);
-          setEditingTransaction(null);
-          setPasscodeModal(prev => ({ ...prev, isOpen: false }));
-        }
-      });
+      const updated: Transaction = { 
+        ...newT, 
+        id: editingTransaction.id,
+        createdAt: editingTransaction.createdAt 
+      };
+      
+      // Log Audit
+      const log = {
+        id: uuid(),
+        timestamp: new Date().toISOString(),
+        action: 'EDIT',
+        originalData: editingTransaction,
+        newData: updated
+      };
+      
+      setAuditLogs(prev => [log, ...prev]);
+      await localStorageService.saveTransaction(updated);
+      setEditingTransaction(null);
     } else {
       const transaction: Transaction = {
         ...newT,
@@ -242,10 +255,8 @@ export default function App() {
   };
 
   const handleDeleteTransaction = async (id: string) => {
-    setPasscodeModal({
-      isOpen: true,
-      allowClose: true,
-      onSuccess: async () => {
+    onRequestPasscode(
+      async () => {
         const original = transactions.find(t => t.id === id);
         if (!original) return;
 
@@ -259,11 +270,12 @@ export default function App() {
 
         setAuditLogs(prev => [log, ...prev]);
         await localStorageService.deleteTransaction(id);
-        setPasscodeModal(prev => ({ ...prev, isOpen: false }));
         // Manually refresh local state
         localStorageService.getTransactions(setTransactions);
-      }
-    });
+      },
+      'Delete Entry',
+      'Enter User ID & Password to confirm deletion of transaction'
+    );
   };
 
   const handleEditInit = (id: string) => {
@@ -365,8 +377,13 @@ export default function App() {
       <PasscodeModal 
         isOpen={passcodeModal.isOpen} 
         onClose={() => setPasscodeModal(prev => ({ ...prev, isOpen: false }))}
-        onSuccess={handleLoginSuccess}
+        onSuccess={() => {
+          passcodeModal.onSuccess();
+          setPasscodeModal(prev => ({ ...prev, isOpen: false }));
+        }}
         allowClose={passcodeModal.allowClose}
+        title={passcodeModal.title}
+        description={passcodeModal.description}
       />
 
       <GoogleSheetsManagerModal
@@ -377,74 +394,51 @@ export default function App() {
         workHours={workHours}
       />
 
-      {isLoggedIn && (
-        <div className="flex gap-2 bg-slate-100/50 p-2 rounded-3xl w-fit mx-auto mt-8 border border-slate-200 backdrop-blur-xl mb-6">
-          <button
-            onClick={() => setActiveView('dashboard')}
-            className={cn(
-              "px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300",
-              activeView === 'dashboard' ? "bg-amber-500 text-white shadow-[0_0_25px_rgba(245,158,11,0.2)]" : "text-slate-400 hover:text-slate-700 hover:bg-white"
-            )}
-          >
-            Dashboard
-          </button>
-          <button
-            onClick={() => setActiveView('hours')}
-            className={cn(
-              "px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300",
-              activeView === 'hours' ? "bg-indigo-600 text-white shadow-[0_0_25px_rgba(79,70,229,0.2)]" : "text-slate-400 hover:text-slate-700 hover:bg-white"
-            )}
-          >
-            Shift Logs
-          </button>
-          <button
-            onClick={() => setActiveView('daily_log')}
-            className={cn(
-              "px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300",
-              activeView === 'daily_log' ? "bg-emerald-600 text-white shadow-[0_0_25px_rgba(5,150,105,0.2)]" : "text-slate-400 hover:text-slate-700 hover:bg-white"
-            )}
-          >
-            Daily Sheet
-          </button>
-          <button
-            onClick={() => setActiveView('inventory')}
-            className={cn(
-              "px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300 relative",
-              activeView === 'inventory' ? "bg-rose-600 text-white shadow-[0_0_25px_rgba(225,29,72,0.2)]" : "text-slate-400 hover:text-slate-700 hover:bg-white"
-            )}
-          >
-            Inventory
-            {lowStockCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-600 text-[10px] font-black text-white shadow-lg ring-2 ring-white animate-bounce">
-                {lowStockCount}
-              </span>
-            )}
-          </button>
-        </div>
-      )}
-      
-      {!isLoggedIn ? (
-        <motion.div 
-          initial={{ opacity: 0, rotateX: 20, z: -100 }}
-          animate={{ opacity: 1, rotateX: 0, z: 0 }}
-          className="flex flex-col items-center justify-center min-h-[60vh] gap-8 [perspective:1000px]"
+      <div className="flex gap-2 bg-slate-100/50 p-2 rounded-3xl w-fit mx-auto mt-8 border border-slate-200 backdrop-blur-xl mb-6">
+        <button
+          onClick={() => setActiveView('dashboard')}
+          className={cn(
+            "px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300",
+            activeView === 'dashboard' ? "bg-amber-500 text-white shadow-[0_0_25px_rgba(245,158,11,0.2)]" : "text-slate-400 hover:text-slate-700 hover:bg-white"
+          )}
         >
-          <div className="text-center space-y-2">
-            <h2 className="text-2xl font-black text-slate-800 uppercase tracking-widest">Terminal Locked</h2>
-            <p className="text-xs text-slate-400 font-medium">Please enter your User ID and Password to log in</p>
-          </div>
-
-          <button 
-            onClick={() => setPasscodeModal(prev => ({ ...prev, isOpen: true }))}
-            className="flex items-center gap-4 bg-white border border-slate-200 px-8 py-4 rounded-2xl shadow-xl hover:shadow-2xl transition-all active:scale-95 group"
-          >
-            <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:scale-110 transition-transform">
-              <LogIn size={20} className="text-slate-600" />
-            </div>
-            <span className="text-sm font-black text-slate-800 uppercase tracking-widest">Unlock Terminal</span>
-          </button>
-        </motion.div>
-      ) : activeView === 'inventory' ? (
+          Dashboard
+        </button>
+        <button
+          onClick={() => setActiveView('hours')}
+          className={cn(
+            "px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300",
+            activeView === 'hours' ? "bg-indigo-600 text-white shadow-[0_0_25px_rgba(79,70,229,0.2)]" : "text-slate-400 hover:text-slate-700 hover:bg-white"
+          )}
+        >
+          Shift Logs
+        </button>
+        <button
+          onClick={() => setActiveView('daily_log')}
+          className={cn(
+            "px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300",
+            activeView === 'daily_log' ? "bg-emerald-600 text-white shadow-[0_0_25px_rgba(5,150,105,0.2)]" : "text-slate-400 hover:text-slate-700 hover:bg-white"
+          )}
+        >
+          Daily Sheet
+        </button>
+        <button
+          onClick={() => setActiveView('inventory')}
+          className={cn(
+            "px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300 relative",
+            activeView === 'inventory' ? "bg-rose-600 text-white shadow-[0_0_25px_rgba(225,29,72,0.2)]" : "text-slate-400 hover:text-slate-700 hover:bg-white"
+          )}
+        >
+          Inventory
+          {lowStockCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-600 text-[10px] font-black text-white shadow-lg ring-2 ring-white animate-bounce">
+              {lowStockCount}
+            </span>
+          )}
+        </button>
+      </div>
+      
+      {activeView === 'inventory' ? (
         <motion.div 
           initial={{ opacity: 0, rotateY: -10 }}
           animate={{ opacity: 1, rotateY: 0 }}
@@ -457,6 +451,7 @@ export default function App() {
             onUpdateInventory={handleUpdateInventory}
             onUpdateUsage={handleUpdateUsage}
             onUpdateCategories={handleUpdateCategories}
+            onRequestPasscode={onRequestPasscode}
           />
         </motion.div>
       ) : activeView === 'hours' ? (
@@ -468,6 +463,7 @@ export default function App() {
           <WorkHoursTracker 
             workHours={workHours}
             onUpdate={handleUpdateWorkHours}
+            onRequestPasscode={onRequestPasscode}
           />
         </motion.div>
       ) : activeView === 'daily_log' ? (

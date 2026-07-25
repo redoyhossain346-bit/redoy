@@ -7,9 +7,18 @@ interface PasscodeModalProps {
   onClose: () => void;
   onSuccess: () => void;
   allowClose?: boolean;
+  title?: string;
+  description?: string;
 }
 
-export default function PasscodeModal({ isOpen, onClose, onSuccess, allowClose = true }: PasscodeModalProps) {
+export default function PasscodeModal({ 
+  isOpen, 
+  onClose, 
+  onSuccess, 
+  allowClose = true,
+  title = "Confirm Deletion",
+  description = "Enter User ID & Password to confirm deletion"
+}: PasscodeModalProps) {
   const [userId, setUserId] = useState(localStorage.getItem('remembered_user_id') || '');
   const [passcode, setPasscode] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
@@ -65,8 +74,8 @@ export default function PasscodeModal({ isOpen, onClose, onSuccess, allowClose =
             <Lock size={32} />
           </div>
           
-          <h2 className="text-xl font-black text-slate-800 tracking-tight mb-1 uppercase">Terminal Login</h2>
-          <p className="text-[10px] text-amber-600 mb-6 font-bold tracking-wider uppercase">Enter ID & Password to access</p>
+          <h2 className="text-xl font-black text-slate-800 tracking-tight mb-1 uppercase">{title}</h2>
+          <p className="text-[10px] text-amber-600 mb-6 font-bold tracking-wider uppercase">{description}</p>
 
           <div className="w-full space-y-4">
             <form onSubmit={handleSubmit} className="w-full space-y-4">
@@ -128,9 +137,9 @@ export default function PasscodeModal({ isOpen, onClose, onSuccess, allowClose =
               
               <button
                 type="submit"
-                className="w-full py-3.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs transition-all shadow-md mt-2 uppercase tracking-wider active:scale-95"
+                className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs transition-all shadow-md mt-2 uppercase tracking-wider active:scale-95"
               >
-                Log In
+                Confirm Action
               </button>
             </form>
           </div>
