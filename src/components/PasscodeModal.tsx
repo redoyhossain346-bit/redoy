@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, X } from 'lucide-react';
+import { Lock, X, User } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface PasscodeModalProps {
@@ -50,7 +50,7 @@ export default function PasscodeModal({ isOpen, onClose, onSuccess, allowClose =
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-white/80 backdrop-blur-xl">
-      <div className="w-full max-w-sm glass-card p-12 border-slate-200 bg-white shadow-2xl relative">
+      <div className="w-full max-w-sm glass-card p-10 border-slate-200 bg-white shadow-2xl relative">
         {allowClose && (
           <button 
             onClick={handleClose}
@@ -61,44 +61,50 @@ export default function PasscodeModal({ isOpen, onClose, onSuccess, allowClose =
         )}
 
         <div className="flex flex-col items-center text-center">
-          <div className="w-20 h-20 rounded-[1.5rem] bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center mb-6 shadow-lg">
-            <ShieldCheck size={40} className="text-white" />
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center mb-4 shadow-lg text-white">
+            <Lock size={32} />
           </div>
           
-          <h2 className="text-2xl font-black text-slate-800 tracking-tighter mb-1 uppercase">System Access</h2>
-          <p className="text-[9px] text-amber-600 mb-8 font-black tracking-[0.3em] uppercase">Auth Required</p>
+          <h2 className="text-xl font-black text-slate-800 tracking-tight mb-1 uppercase">Terminal Login</h2>
+          <p className="text-[10px] text-amber-600 mb-6 font-bold tracking-wider uppercase">Enter ID & Password to access</p>
 
           <div className="w-full space-y-4">
             <form onSubmit={handleSubmit} className="w-full space-y-4">
-              <div className="space-y-1.5 text-left">
-                <label className="text-[9px] font-black text-slate-400 pl-1 uppercase tracking-[0.2em] leading-none">Operator ID</label>
-                <input
-                  type="text"
-                  value={userId}
-                  onChange={(e) => setUserId(e.target.value)}
-                  placeholder="ID"
-                  className={cn(
-                    "w-full bg-slate-50 border py-3.5 px-4 rounded-xl focus:outline-none transition-all text-xs font-black placeholder:text-slate-300 uppercase tracking-widest",
-                    error ? "border-rose-500 animate-shake" : "border-slate-200 focus:border-amber-500/50 text-slate-800 shadow-sm"
-                  )}
-                />
+              <div className="space-y-1 text-left">
+                <label className="text-[10px] font-bold text-slate-500 pl-1 uppercase tracking-wider leading-none">User ID</label>
+                <div className="relative flex items-center">
+                  <User size={16} className="absolute left-3.5 text-slate-400" />
+                  <input
+                    type="text"
+                    value={userId}
+                    onChange={(e) => setUserId(e.target.value)}
+                    placeholder="Enter ID (e.g. Cellular01)"
+                    className={cn(
+                      "w-full bg-slate-50 border py-3 pl-10 pr-4 rounded-xl focus:outline-none transition-all text-xs font-bold text-slate-800 placeholder:text-slate-400 shadow-xs",
+                      error ? "border-rose-500 animate-shake" : "border-slate-200 focus:border-amber-500"
+                    )}
+                  />
+                </div>
               </div>
 
-              <div className="space-y-1.5 text-left">
-                <label className="text-[9px] font-black text-slate-400 pl-1 uppercase tracking-[0.2em] leading-none">Passcode</label>
-                <input
-                  type="password"
-                  value={passcode}
-                  onChange={(e) => setPasscode(e.target.value)}
-                  placeholder="••••••"
-                  className={cn(
-                    "w-full bg-slate-50 border text-center text-xl tracking-[0.8rem] py-3.5 rounded-xl focus:outline-none transition-all placeholder:tracking-normal placeholder:text-slate-300",
-                    error ? "border-rose-500 animate-shake" : "border-slate-200 focus:border-amber-500/50 text-slate-800 shadow-sm"
-                  )}
-                />
+              <div className="space-y-1 text-left">
+                <label className="text-[10px] font-bold text-slate-500 pl-1 uppercase tracking-wider leading-none">Password</label>
+                <div className="relative flex items-center">
+                  <Lock size={16} className="absolute left-3.5 text-slate-400" />
+                  <input
+                    type="password"
+                    value={passcode}
+                    onChange={(e) => setPasscode(e.target.value)}
+                    placeholder="Enter Password"
+                    className={cn(
+                      "w-full bg-slate-50 border py-3 pl-10 pr-4 rounded-xl focus:outline-none transition-all text-xs font-bold text-slate-800 placeholder:text-slate-400 shadow-xs",
+                      error ? "border-rose-500 animate-shake" : "border-slate-200 focus:border-amber-500"
+                    )}
+                  />
+                </div>
               </div>
 
-              {error && <p className="text-rose-500 text-[9px] font-black text-center uppercase tracking-[0.2em] bg-rose-50 py-1.5 rounded-lg border border-rose-100">Access Denied</p>}
+              {error && <p className="text-rose-500 text-[10px] font-bold text-center uppercase tracking-wider bg-rose-50 py-2 rounded-lg border border-rose-200">Invalid ID or Password</p>}
               
               <div className="flex items-center justify-between px-1">
                 <label className="flex items-center gap-2 cursor-pointer group">
@@ -109,22 +115,22 @@ export default function PasscodeModal({ isOpen, onClose, onSuccess, allowClose =
                       onChange={(e) => setRememberMe(e.target.checked)}
                       className="peer sr-only"
                     />
-                    <div className="w-4 h-4 border-2 border-slate-200 rounded-md bg-slate-50 peer-checked:bg-amber-500 peer-checked:border-amber-500 transition-all duration-300 shadow-sm"></div>
+                    <div className="w-4 h-4 border-2 border-slate-300 rounded-md bg-slate-50 peer-checked:bg-amber-500 peer-checked:border-amber-500 transition-all duration-300 shadow-xs"></div>
                     <div className="absolute opacity-0 peer-checked:opacity-100 transition-opacity">
                       <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4">
                         <path d="M5 13l4 4L19 7" />
                       </svg>
                     </div>
                   </div>
-                  <span className="text-[9px] font-black text-slate-400 group-hover:text-slate-600 transition-colors uppercase tracking-[0.1em]">Remember Identity</span>
+                  <span className="text-[10px] font-bold text-slate-500 group-hover:text-slate-700 transition-colors uppercase tracking-wider">Remember ID</span>
                 </label>
               </div>
               
               <button
                 type="submit"
-                className="w-full py-4 bg-gradient-to-r from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-white rounded-xl font-black text-[10px] transition-all shadow-lg mt-2 uppercase tracking-widest active:scale-95"
+                className="w-full py-3.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs transition-all shadow-md mt-2 uppercase tracking-wider active:scale-95"
               >
-                Enter Terminal
+                Log In
               </button>
             </form>
           </div>
@@ -133,3 +139,4 @@ export default function PasscodeModal({ isOpen, onClose, onSuccess, allowClose =
     </div>
   );
 }
+

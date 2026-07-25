@@ -430,8 +430,8 @@ export default function App() {
           className="flex flex-col items-center justify-center min-h-[60vh] gap-8 [perspective:1000px]"
         >
           <div className="text-center space-y-2">
-            <h2 className="text-2xl font-black text-slate-800 uppercase tracking-widest">Device Access Locked</h2>
-            <p className="text-xs text-slate-400 font-medium">Please enter your device passcode to unlock local storage</p>
+            <h2 className="text-2xl font-black text-slate-800 uppercase tracking-widest">Terminal Locked</h2>
+            <p className="text-xs text-slate-400 font-medium">Please enter your User ID and Password to log in</p>
           </div>
 
           <button 

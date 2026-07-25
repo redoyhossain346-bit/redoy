@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileSpreadsheet, LogIn, LogOut, RefreshCw, Check, ExternalLink, Plus, Download, Upload, AlertCircle, Database, Shield } from 'lucide-react';
+import { FileSpreadsheet, LogIn, LogOut, RefreshCw, Check, ExternalLink, Plus, Download, Upload, AlertCircle, Database, Shield, Copy } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { googleSignIn, logoutGoogle, initAuth, getAccessToken } from '../services/googleSheetsAuth';
 import { googleSheetsService, DriveSpreadsheet } from '../services/googleSheetsService';
@@ -30,6 +30,8 @@ export default function GoogleSheetsManagerModal({
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+  const [isUnauthorizedDomain, setIsUnauthorizedDomain] = useState<boolean>(false);
+  const [domainCopied, setDomainCopied] = useState<boolean>(false);
   
   // Spreadsheets & Auto-Sync
   const [spreadsheets, setSpreadsheets] = useState<DriveSpreadsheet[]>([]);
@@ -99,6 +101,7 @@ export default function GoogleSheetsManagerModal({
     try {
       setLoading(true);
       setStatusMessage(null);
+      setIsUnauthorizedDomain(false);
       const result = await googleSignIn();
       if (result) {
         setGoogleUser(result.user);
@@ -107,7 +110,15 @@ export default function GoogleSheetsManagerModal({
         await loadSpreadsheets(result.accessToken);
       }
     } catch (err: any) {
-      setStatusMessage({ type: 'error', text: err.message || 'Google Sign-in failed' });
+      console.error('Google Sign-in error:', err);
+      const isDomainErr = err.code === 'auth/unauthorized-domain' || err.message?.includes('unauthorized-domain');
+      setIsUnauthorizedDomain(isDomainErr);
+      setStatusMessage({
+        type: 'error',
+        text: isDomainErr
+          ? `Firebase error: Domain "${window.location.hostname}" is not authorized in Firebase Console.`
+          : err.message || 'Google Sign-in failed',
+      });
     } finally {
       setLoading(false);
     }
@@ -183,7 +194,7 @@ export default function GoogleSheetsManagerModal({
           localStorage.setItem('gsheets_last_synced', syncTime);
           setStatusMessage({
             type: 'success',
-            text: `Successfully synced data to Google Sheet!`,
+            text: `Successfully synced & styled data in Google Sheet!`,
           });
         } catch (err: any) {
           setStatusMessage({ type: 'error', text: err.message || 'Export failed' });
@@ -192,6 +203,23 @@ export default function GoogleSheetsManagerModal({
         }
       },
     });
+  };
+
+  const handleFormatSheet = async () => {
+    if (!token || !selectedSpreadsheetId) return;
+    setLoading(true);
+    setStatusMessage(null);
+    try {
+      await googleSheetsService.styleSpreadsheet(token, selectedSpreadsheetId);
+      setStatusMessage({
+        type: 'success',
+        text: 'Successfully formatted sheet with header colors, zebra striping, borders, currency formatting, and column widths!',
+      });
+    } catch (err: any) {
+      setStatusMessage({ type: 'error', text: err.message || 'Formatting failed' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -239,6 +267,76 @@ export default function GoogleSheetsManagerModal({
             >
               <AlertCircle size={18} className="shrink-0" />
               <span>{statusMessage.text}</span>
+            </div>
+          )}
+
+          {/* Unauthorized Domain Resolution Card */}
+          {isUnauthorizedDomain && (
+            <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-950 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                  <Shield size={18} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-amber-900">
+                    Domain Authorization Required in Firebase
+                  </h4>
+                  <p className="text-xs font-medium text-amber-800/90 mt-1">
+                    Firebase authentication protects your Google Account by requiring domains to be added to Authorized Domains.
+                  </p>
+                </div>
+              </div>
+
+              {/* Instant Quick Fix for 127.0.0.1 */}
+              {(window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('127.')) && (
+                <div className="p-3.5 bg-white rounded-xl border border-amber-300 flex items-center justify-between gap-3 shadow-sm">
+                  <div>
+                    <p className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                      ⚡ Instant Quick Fix for Local PC
+                    </p>
+                    <p className="text-[11px] font-medium text-slate-600 mt-0.5">
+                      Firebase pre-authorizes <code className="font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-800 font-bold">localhost</code>. Access your app via localhost instead of 127.0.0.1!
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      window.location.href = window.location.href.replace('127.0.0.1', 'localhost');
+                    }}
+                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl uppercase tracking-wider shrink-0 transition-all shadow-sm active:scale-95"
+                  >
+                    Open localhost:3000
+                  </button>
+                </div>
+              )}
+
+              {/* Step-by-step domain whitelist guide */}
+              <div className="space-y-2 text-xs font-semibold text-slate-700 bg-white/90 p-4 rounded-xl border border-amber-200/80 shadow-sm">
+                <p className="font-bold text-slate-900 uppercase text-[11px] tracking-wider">
+                  How to whitelist domain ({window.location.hostname}):
+                </p>
+
+                <div className="flex items-center justify-between gap-2 p-2 bg-slate-100 rounded-lg font-mono text-[11px] text-slate-800 border border-slate-200">
+                  <span className="truncate font-bold">{window.location.hostname}</span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(window.location.hostname);
+                      setDomainCopied(true);
+                      setTimeout(() => setDomainCopied(false), 2000);
+                    }}
+                    className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-md text-[10px] font-bold shrink-0 transition-colors shadow-2xs"
+                  >
+                    {domainCopied ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                    {domainCopied ? 'Copied!' : 'Copy Domain'}
+                  </button>
+                </div>
+
+                <ol className="list-decimal list-inside space-y-1.5 text-[11px] text-slate-600 pt-1">
+                  <li>Open <a href="https://console.firebase.google.com/" target="_blank" rel="noreferrer" className="text-emerald-700 font-bold underline inline-flex items-center gap-1">Firebase Console <ExternalLink size={10} /></a></li>
+                  <li>Go to <strong>Authentication</strong> &rarr; <strong>Settings</strong> &rarr; <strong>Authorized Domains</strong>.</li>
+                  <li>Click <strong>Add Domain</strong>, paste <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-amber-900 font-bold">{window.location.hostname}</code>, and click <strong>Save</strong>.</li>
+                  <li>Click <strong>Sign in with Google</strong> above!</li>
+                </ol>
+              </div>
             </div>
           )}
 
@@ -356,15 +454,26 @@ export default function GoogleSheetsManagerModal({
                 )}
 
                 {currentSheet && (
-                  <a
-                    href={`https://docs.google.com/spreadsheets/d/${currentSheet.id}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs font-black text-emerald-600 hover:underline pt-1"
-                  >
-                    <ExternalLink size={14} />
-                    Open "{currentSheet.name}" in Google Sheets
-                  </a>
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                    <a
+                      href={`https://docs.google.com/spreadsheets/d/${currentSheet.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-black text-emerald-600 hover:underline"
+                    >
+                      <ExternalLink size={14} />
+                      Open "{currentSheet.name}" in Google Sheets
+                    </a>
+
+                    <button
+                      onClick={handleFormatSheet}
+                      disabled={loading}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-teal-50 border border-teal-200 hover:bg-teal-100 text-teal-800 text-xs font-bold rounded-lg transition-colors shadow-2xs active:scale-95 disabled:opacity-50"
+                    >
+                      <FileSpreadsheet size={13} className="text-teal-600" />
+                      Apply Table Colors & Styling
+                    </button>
+                  </div>
                 )}
               </div>
 

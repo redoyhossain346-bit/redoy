@@ -135,6 +135,8 @@ export const googleSheetsService = {
       const err = await res.json();
       throw new Error(err.error?.message || 'Failed to write transactions to Google Sheets');
     }
+
+    await this.styleSpreadsheet(accessToken, spreadsheetId);
   },
 
   /**
@@ -187,6 +189,8 @@ export const googleSheetsService = {
       const err = await res.json();
       throw new Error(err.error?.message || 'Failed to write inventory to Google Sheets');
     }
+
+    await this.styleSpreadsheet(accessToken, spreadsheetId);
   },
 
   /**
@@ -229,11 +233,202 @@ export const googleSheetsService = {
       const err = await res.json();
       throw new Error(err.error?.message || 'Failed to write work hours to Google Sheets');
     }
+
+    await this.styleSpreadsheet(accessToken, spreadsheetId);
   },
 
   /**
-   * Full Sync: Export Transactions, Inventory, and Work Hours into a Google Sheet
+   * Apply beautiful table styling (header color, zebra striping, borders, currency formats, auto-width) to worksheets
    */
+  async styleSpreadsheet(
+    accessToken: string,
+    spreadsheetId: string
+  ): Promise<void> {
+    try {
+      // 1. Fetch metadata to get sheet IDs
+      const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!metaRes.ok) return;
+      const meta = await metaRes.json();
+      const sheets = meta.sheets || [];
+
+      const requests: any[] = [];
+
+      for (const sheet of sheets) {
+        const sheetId = sheet.properties.sheetId;
+        const title = sheet.properties.title;
+        const grid = sheet.properties.gridProperties || {};
+        const maxRows = Math.min(grid.rowCount || 100, 500);
+        const maxCols = title === 'Transactions' ? 13 : title === 'Inventory' ? 9 : 4;
+
+        // A. Header Row Formatting (Teal #0D9488, Bold White Text, Middle Centered)
+        requests.push({
+          repeatCell: {
+            range: {
+              sheetId,
+              startRowIndex: 0,
+              endRowIndex: 1,
+              startColumnIndex: 0,
+              endColumnIndex: maxCols,
+            },
+            cell: {
+              userEnteredFormat: {
+                backgroundColor: { red: 0.05, green: 0.58, blue: 0.53 }, // Teal-600
+                textFormat: {
+                  foregroundColor: { red: 1, green: 1, blue: 1 },
+                  fontSize: 11,
+                  bold: true,
+                  fontFamily: 'Segoe UI',
+                },
+                horizontalAlignment: 'CENTER',
+                verticalAlignment: 'MIDDLE',
+                padding: { top: 8, right: 10, bottom: 8, left: 10 },
+              },
+            },
+            fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,padding)',
+          },
+        });
+
+        // B. Set Header Row Height to 38px
+        requests.push({
+          updateDimensionProperties: {
+            range: {
+              sheetId,
+              dimension: 'ROWS',
+              startIndex: 0,
+              endIndex: 1,
+            },
+            properties: { pixelSize: 38 },
+            fields: 'pixelSize',
+          },
+        });
+
+        // C. Data Row Formatting (General text alignment, font, and borders)
+        const thinBorder = { style: 'SOLID', color: { red: 0.85, green: 0.88, blue: 0.92 } };
+        requests.push({
+          repeatCell: {
+            range: {
+              sheetId,
+              startRowIndex: 1,
+              endRowIndex: maxRows,
+              startColumnIndex: 0,
+              endColumnIndex: maxCols,
+            },
+            cell: {
+              userEnteredFormat: {
+                textFormat: { fontSize: 10, fontFamily: 'Segoe UI', foregroundColor: { red: 0.12, green: 0.16, blue: 0.22 } },
+                verticalAlignment: 'MIDDLE',
+                borders: {
+                  top: thinBorder,
+                  bottom: thinBorder,
+                  left: thinBorder,
+                  right: thinBorder,
+                },
+                padding: { top: 6, right: 8, bottom: 6, left: 8 },
+              },
+            },
+            fields: 'userEnteredFormat(textFormat,verticalAlignment,borders,padding)',
+          },
+        });
+
+        // D. Alternating Row Colors (Zebra Striping: even rows white, odd rows light gray-blue #F8FAFC)
+        for (let r = 1; r < 100; r++) {
+          if (r % 2 === 1) {
+            requests.push({
+              repeatCell: {
+                range: {
+                  sheetId,
+                  startRowIndex: r,
+                  endRowIndex: r + 1,
+                  startColumnIndex: 0,
+                  endColumnIndex: maxCols,
+                },
+                cell: {
+                  userEnteredFormat: {
+                    backgroundColor: { red: 0.97, green: 0.98, blue: 0.99 },
+                  },
+                },
+                fields: 'userEnteredFormat.backgroundColor',
+              },
+            });
+          }
+        }
+
+        // E. Specific Column Formatting (Currency & Alignment)
+        if (title === 'Transactions') {
+          // Column 4 is "Total Amount ($)" -> Currency
+          requests.push({
+            repeatCell: {
+              range: {
+                sheetId,
+                startRowIndex: 1,
+                endRowIndex: maxRows,
+                startColumnIndex: 4,
+                endColumnIndex: 5,
+              },
+              cell: {
+                userEnteredFormat: {
+                  numberFormat: { type: 'CURRENCY', pattern: '$#,##0.00' },
+                  horizontalAlignment: 'RIGHT',
+                  textFormat: { bold: true, foregroundColor: { red: 0.05, green: 0.5, blue: 0.3 } },
+                },
+              },
+              fields: 'userEnteredFormat(numberFormat,horizontalAlignment,textFormat)',
+            },
+          });
+        } else if (title === 'Inventory') {
+          // Column 4 (Unit Price) & Column 5 (Total Value) -> Currency
+          requests.push({
+            repeatCell: {
+              range: {
+                sheetId,
+                startRowIndex: 1,
+                endRowIndex: maxRows,
+                startColumnIndex: 4,
+                endColumnIndex: 6,
+              },
+              cell: {
+                userEnteredFormat: {
+                  numberFormat: { type: 'CURRENCY', pattern: '$#,##0.00' },
+                  horizontalAlignment: 'RIGHT',
+                  textFormat: { bold: true },
+                },
+              },
+              fields: 'userEnteredFormat(numberFormat,horizontalAlignment,textFormat)',
+            },
+          });
+        }
+
+        // F. Auto-resize Column Widths to fit header and text perfectly
+        requests.push({
+          autoResizeDimensions: {
+            dimensions: {
+              sheetId,
+              dimension: 'COLUMNS',
+              startIndex: 0,
+              endIndex: maxCols,
+            },
+          },
+        });
+      }
+
+      // Execute batchUpdate request
+      if (requests.length > 0) {
+        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ requests }),
+        });
+      }
+    } catch (err) {
+      console.warn('Error applying table styling to Google Sheet:', err);
+    }
+  },
   async exportAllData(
     accessToken: string,
     spreadsheetId: string,
@@ -242,6 +437,7 @@ export const googleSheetsService = {
     await this.exportTransactions(accessToken, spreadsheetId, data.transactions);
     await this.exportInventory(accessToken, spreadsheetId, data.inventory);
     await this.exportWorkHours(accessToken, spreadsheetId, data.workHours);
+    await this.styleSpreadsheet(accessToken, spreadsheetId);
   },
 
   /**
