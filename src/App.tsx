@@ -203,7 +203,10 @@ export default function App() {
     } else if (filterType === 'year') {
       result = result.filter(t => t.date.startsWith(selectedYear));
     } else if (filterType === 'range') {
-      result = result.filter(t => t.date >= startDate && t.date <= endDate);
+      result = result.filter(t => {
+        const dateStr = t.date ? t.date.slice(0, 10) : '';
+        return (!startDate || dateStr >= startDate) && (!endDate || dateStr <= endDate);
+      });
     }
 
     // Payment Method Filter
@@ -527,7 +530,7 @@ export default function App() {
             {/* Statement Period Selection */}
             <motion.div 
               whileHover={{ translateZ: 20 }}
-              className="glass-card p-8 flex flex-col justify-between h-[210px] bg-white border-slate-200 [transform-style:preserve-3d]"
+              className="glass-card p-5 md:p-6 flex flex-col justify-between min-h-[190px] bg-white border-slate-200 [transform-style:preserve-3d]"
             >
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">

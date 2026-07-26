@@ -102,6 +102,13 @@ export function formatTxDateTime(dateStr?: string, createdAtStr?: string): strin
   }
 
   if (dateStr) {
+    if (dateStr.length === 10 && dateStr.includes('-')) {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+        const localDate = new Date(year, month - 1, day);
+        return format(localDate, 'yyyy-MM-dd') + ' 12:00 AM';
+      }
+    }
     const d = new Date(dateStr);
     if (!isNaN(d.getTime())) {
       return format(d, 'yyyy-MM-dd hh:mm a');

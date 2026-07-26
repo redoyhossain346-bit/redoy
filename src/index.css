@@ -21,6 +21,9 @@
 }
 
 @layer base {
+  html {
+    font-size: 125%;
+  }
   body {
     @apply bg-white text-slate-900 antialiased selection:bg-amber-500/20 selection:text-amber-900;
     background-image: 

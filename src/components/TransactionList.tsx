@@ -56,21 +56,18 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
   const filteredForExport = useMemo(() => {
     return transactions.filter(t => {
       const matchesType = exportFilters.type === 'all' || t.type === exportFilters.type;
-      const tDate = new Date(t.date);
-      const matchesDate = (!exportFilters.startDate || tDate >= startOfDay(new Date(exportFilters.startDate))) &&
-                          (!exportFilters.endDate || tDate <= endOfDay(new Date(exportFilters.endDate)));
+      const tDateStr = t.date ? t.date.slice(0, 10) : '';
+      const matchesDate = (!exportFilters.startDate || tDateStr >= exportFilters.startDate) &&
+                          (!exportFilters.endDate || tDateStr <= exportFilters.endDate);
       return matchesType && matchesDate;
     });
   }, [transactions, exportFilters]);
 
   const filteredWorkHoursForExport = useMemo(() => {
     return (workHours || []).filter(h => {
-      const hDate = new Date(h.date.length === 10 ? `${h.date}T00:00:00` : h.date);
-      const sDate = exportFilters.startDate ? new Date(`${exportFilters.startDate}T00:00:00`) : null;
-      const eDate = exportFilters.endDate ? new Date(`${exportFilters.endDate}T23:59:59`) : null;
-
-      const matchesDate = (!sDate || hDate >= startOfDay(sDate)) &&
-                          (!eDate || hDate <= endOfDay(eDate));
+      const hDateStr = h.date ? h.date.slice(0, 10) : '';
+      const matchesDate = (!exportFilters.startDate || hDateStr >= exportFilters.startDate) &&
+                          (!exportFilters.endDate || hDateStr <= exportFilters.endDate);
       return matchesDate;
     });
   }, [workHours, exportFilters]);
@@ -82,8 +79,7 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
       return;
     }
 
-    const wsData = dataToExport.map((t, index) => ({
-      Transaction_ID: formatTransactionId(t.id, index),
+    const wsData = dataToExport.map((t) => ({
       Date_Time: formatTxDateTime(t.date, t.createdAt),
       Type: t.type.toUpperCase(),
       Category: t.category,
@@ -121,7 +117,112 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
       ID_Number: t.customer?.idNumber || ''
     }));
 
+    // Calculate Financial Summaries for the export
+    const totalInc = dataToExport.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+    const totalExp = dataToExport.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+    const totalRef = dataToExport.filter(t => t.type === 'refund').reduce((sum, t) => sum + t.amount, 0);
+    const totalCost = dataToExport.reduce((sum, t) => sum + (t.totalCost || t.items?.reduce((acc, i) => acc + ((i.cost || 0) * i.quantity), 0) || 0), 0);
+    const netProfit = totalInc - totalCost - totalExp - totalRef;
+    const totalDue = dataToExport.reduce((sum, t) => sum + (t.due || 0), 0);
+
+    let totalCashIncome = 0;
+    let totalCardIncome = 0;
+    let totalCashRefund = 0;
+    let totalCardRefund = 0;
+
+    dataToExport.forEach(t => {
+      let cashVal = 0;
+      let cardVal = 0;
+
+      if (t.paymentSplit) {
+        cashVal = Number(t.paymentSplit.cash || 0);
+        cardVal = Number(t.paymentSplit.card || 0);
+      } else {
+        if (t.paymentMethod === 'CASH') {
+          cashVal = Number(t.amount || 0);
+        } else if (t.paymentMethod === 'CARD') {
+          cardVal = Number(t.amount || 0);
+        }
+      }
+
+      if (t.type === 'income') {
+        totalCashIncome += cashVal;
+        totalCardIncome += cardVal;
+      } else if (t.type === 'refund') {
+        totalCashRefund += cashVal;
+        totalCardRefund += cardVal;
+      }
+    });
+
     const workbook = new ExcelJS.Workbook();
+
+    // ==========================================
+    // 1st WORKSHEET: FINANCIAL SUMMARY & P&L
+    // ==========================================
+    const pnlSheet = workbook.addWorksheet('Financial Summary P&L');
+
+    const titleRow = pnlSheet.addRow(['ALL CELLULAR & REPAIR - FINANCIAL SUMMARY & P&L REPORT']);
+    titleRow.font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
+    titleRow.height = 30;
+    pnlSheet.mergeCells('A1:C1');
+    pnlSheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+    pnlSheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' };
+
+    let pnlSubtitle = `Report Date: ${format(new Date(), 'dd MMM yyyy, hh:mm a')}`;
+    if (exportFilters.startDate || exportFilters.endDate) {
+      pnlSubtitle += `  |  Filtered Period: ${exportFilters.startDate || 'Start'} to ${exportFilters.endDate || 'End'}`;
+    }
+    const dateRow = pnlSheet.addRow([pnlSubtitle, '', '']);
+    dateRow.font = { name: 'Arial', size: 9, italic: true, color: { argb: 'FF64748B' } };
+    pnlSheet.mergeCells('A2:C2');
+
+    pnlSheet.addRow([]); // Blank separator
+
+    const pnlHeader = pnlSheet.addRow(['Financial Metric / Category', 'Amount ($)', 'Detailed Description']);
+    pnlHeader.height = 26;
+    pnlHeader.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+    pnlHeader.eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
+      cell.alignment = { vertical: 'middle' };
+    });
+
+    const pnlMetrics = [
+      { metric: 'Total Gross Sales / Income (+)', val: totalInc, bg: 'FFECFDF5', color: 'FF047857', note: 'Total revenue from sales & services' },
+      { metric: '  • Cash Sales Income', val: totalCashIncome, bg: 'FFECFDF5', color: 'FF065F46', note: 'Cash collections' },
+      { metric: '  • Card Sales Income', val: totalCardIncome, bg: 'FFECFDF5', color: 'FF065F46', note: 'Credit/Debit card collections' },
+      { metric: 'Total Product / Item Cost (-)', val: totalCost, bg: 'FFFFF1F2', color: 'FFE11D48', note: 'Wholesale / inventory cost of sold items' },
+      { metric: 'Total Operating Expenses (-)', val: totalExp, bg: 'FFFFF1F2', color: 'FFBE123C', note: 'Store operating & general expenses' },
+      { metric: 'Total Customer Refunds (-)', val: totalRef, bg: 'FFFEF2F2', color: 'FFDC2626', note: 'Refunds issued to customers' },
+      { metric: '  • Cash Refunds Issued', val: totalCashRefund, bg: 'FFFEF2F2', color: 'FF92400E', note: 'Cash refunds' },
+      { metric: '  • Card Refunds Issued', val: totalCardRefund, bg: 'FFFEF2F2', color: 'FF92400E', note: 'Card refunds' },
+      { metric: 'NET PROFIT / MONEY MADE', val: netProfit, bg: 'FFDCFCE7', color: 'FF166534', note: 'Net money made after costs, expenses & refunds' },
+      { metric: 'Total Outstanding Balance Due', val: totalDue, bg: 'FFFEF2F2', color: 'FFDC2626', note: 'Uncollected balance due from customers' }
+    ];
+
+    pnlMetrics.forEach(m => {
+      const row = pnlSheet.addRow([m.metric, m.val, m.note]);
+      row.height = 22;
+      row.getCell(1).font = { name: 'Arial', size: 9.5, bold: true, color: { argb: 'FF334155' } };
+      row.getCell(2).font = { name: 'Arial', size: 10, bold: true, color: { argb: m.color } };
+      row.getCell(2).numFmt = '$#,##0.00';
+      row.getCell(3).font = { name: 'Arial', size: 8.5, italic: true, color: { argb: 'FF64748B' } };
+      row.eachCell({ includeEmpty: true }, (cell) => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: m.bg } };
+        cell.border = {
+          bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+        };
+      });
+    });
+
+    pnlSheet.getColumn(1).width = 36;
+    pnlSheet.getColumn(2).width = 20;
+    pnlSheet.getColumn(3).width = 46;
+
+    // ==========================================
+    // 2nd WORKSHEET: TRANSACTIONS LIST
+    // ==========================================
     const worksheet = workbook.addWorksheet('Transactions');
 
     // Define columns
@@ -208,52 +309,21 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
       }
     });
 
-    // Calculate Financial Summaries for the bottom row
-    const totalInc = dataToExport.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-    const totalExp = dataToExport.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-    const totalRef = dataToExport.filter(t => t.type === 'refund').reduce((sum, t) => sum + t.amount, 0);
-    const netProfit = totalInc - totalExp - totalRef;
-    const totalDue = dataToExport.reduce((sum, t) => sum + (t.due || 0), 0);
-
-    let totalCashIncome = 0;
-    let totalCardIncome = 0;
-    let totalCashRefund = 0;
-    let totalCardRefund = 0;
-
-    dataToExport.forEach(t => {
-      let cashVal = 0;
-      let cardVal = 0;
-
-      if (t.paymentSplit) {
-        cashVal = Number(t.paymentSplit.cash || 0);
-        cardVal = Number(t.paymentSplit.card || 0);
-      } else {
-        if (t.paymentMethod === 'CASH') {
-          cashVal = Number(t.amount || 0);
-        } else if (t.paymentMethod === 'CARD') {
-          cardVal = Number(t.amount || 0);
-        }
-      }
-
-      if (t.type === 'income') {
-        totalCashIncome += cashVal;
-        totalCardIncome += cardVal;
-      } else if (t.type === 'refund') {
-        totalCashRefund += cashVal;
-        totalCardRefund += cardVal;
-      }
-    });
-
     // Empty separator row
     worksheet.addRow({});
 
     // Summary Totals Row
     const summaryRow = worksheet.addRow({
-      Transaction_ID: 'TOTAL FINANCIAL SUMMARY',
+      Date_Time: 'TOTAL FINANCIAL SUMMARY',
       Type: `INC: $${totalInc.toFixed(2)}`,
-      Category: `CASH: $${totalCashIncome.toFixed(2)} | CARD: $${totalCardIncome.toFixed(2)}`,
-      Status: `REF: $${totalRef.toFixed(2)}`,
-      Method: `NET: $${netProfit.toFixed(2)}`,
+      Category: `COST: $${totalCost.toFixed(2)}`,
+      Status: `EXP: $${totalExp.toFixed(2)}`,
+      Method: `REF: $${totalRef.toFixed(2)}`,
+      Cash: totalCashIncome,
+      Card: totalCardIncome,
+      SubTotal: dataToExport.reduce((sum, t) => sum + (t.subTotal || 0), 0),
+      Cost: totalCost,
+      Profit: netProfit,
       Total: dataToExport.reduce((sum, t) => sum + t.amount, 0),
       Due: totalDue
     });
@@ -292,14 +362,15 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
     });
 
     const metrics = [
-      { name: 'Total Income (+)', val: `$${totalInc.toFixed(2)}`, bg: 'FFECFDF5', color: 'FF047857' },
+      { name: 'Total Gross Sales / Income (+)', val: `$${totalInc.toFixed(2)}`, bg: 'FFECFDF5', color: 'FF047857' },
       { name: '  • Total Cash Income', val: `$${totalCashIncome.toFixed(2)}`, bg: 'FFECFDF5', color: 'FF065F46' },
       { name: '  • Total Card Income', val: `$${totalCardIncome.toFixed(2)}`, bg: 'FFECFDF5', color: 'FF065F46' },
-      { name: 'Total Expenses (-)', val: `$${totalExp.toFixed(2)}`, bg: 'FFFFF1F2', color: 'FFBE123C' },
-      { name: 'Total Refunds (-)', val: `$${totalRef.toFixed(2)}`, bg: 'FFFEF2F2', color: 'FFDC2626' },
+      { name: 'Total Product / Item Cost (-)', val: `$${totalCost.toFixed(2)}`, bg: 'FFFFF1F2', color: 'FFE11D48' },
+      { name: 'Total Business Expenses (-)', val: `$${totalExp.toFixed(2)}`, bg: 'FFFFF1F2', color: 'FFBE123C' },
+      { name: 'Total Customer Refunds (-)', val: `$${totalRef.toFixed(2)}`, bg: 'FFFEF2F2', color: 'FFDC2626' },
       { name: '  • Total Cash Refund', val: `$${totalCashRefund.toFixed(2)}`, bg: 'FFFEF2F2', color: 'FF92400E' },
       { name: '  • Total Card Refund', val: `$${totalCardRefund.toFixed(2)}`, bg: 'FFFEF2F2', color: 'FF92400E' },
-      { name: 'Net Profit / Cash Flow', val: `$${netProfit.toFixed(2)}`, bg: 'FFE2E8F0', color: 'FF0F172A' },
+      { name: 'Net Profit / Money Made', val: `$${netProfit.toFixed(2)}`, bg: 'FFDCFCE7', color: 'FF166534' },
       { name: 'Total Outstanding Balance Due', val: `$${totalDue.toFixed(2)}`, bg: 'FFFEF2F2', color: 'FFDC2626' }
     ];
 
@@ -526,16 +597,16 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
     const rowCount = dataToExport.length;
     
     // Dynamic sizing to guarantee single page fit
-    const mainFontSize = rowCount > 15 ? 7 : 7.5;
-    const mainCellPadding = rowCount > 15 ? 2 : 2.5;
+    const mainFontSize = rowCount > 15 ? 9 : 9.5;
+    const mainCellPadding = rowCount > 15 ? 3 : 3.5;
 
     // Title Header
     doc.setTextColor(15, 23, 42);
-    doc.setFontSize(16);
+    doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.text("All Cellular & Repair - Transaction & Financial Report", 30, 30);
     
-    doc.setFontSize(8);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 116, 139);
     let subtitleText = `Generated: ${format(new Date(), 'dd MMM yyyy, hh:mm a')}`;
@@ -544,35 +615,49 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
     }
     doc.text(subtitleText, 30, 43);
 
-    const tableData = dataToExport.map((t, index) => [
-      formatTransactionId(t.id, index),
-      formatTxDateTime(t.date, t.createdAt),
-      t.type.toUpperCase(),
-      t.items?.map(i => {
-        let str = i.category;
-        if (i.model) str += ` (${i.model})`;
-        if (i.carrier) str += ` (${i.carrier})`;
-        if (i.phoneNumber) str += ` [#:${i.phoneNumber}]`;
-        if (i.imei) str += ` [EMI:${i.imei}]`;
-        return str;
-      }).join(', ') || t.category,
-      t.workStatus || '-',
-      t.paymentSplit ? 'SPLIT' : t.paymentMethod,
-      formatCurrency(t.amount),
-      formatCurrency(t.due),
-      t.customer?.name || '-',
-      t.note || '-'
-    ]);
+    const tableData = dataToExport.map((t, index) => {
+      const txCost = t.totalCost || t.items?.reduce((acc, i) => acc + ((i.cost || 0) * i.quantity), 0) || 0;
+      const txProfit = t.profit !== undefined ? t.profit : ((t.subTotal - t.discount) - txCost);
+
+      return [
+        formatTransactionId(t.id, index),
+        formatTxDateTime(t.date, t.createdAt),
+        t.type.toUpperCase(),
+        t.items?.map(i => {
+          let str = i.category;
+          if (i.cost !== undefined && i.cost > 0) str += ` [Cost:$${i.cost}]`;
+          if (i.model) str += ` (${i.model})`;
+          if (i.carrier) str += ` (${i.carrier})`;
+          if (i.phoneNumber) str += ` [#:${i.phoneNumber}]`;
+          if (i.imei) str += ` [EMI:${i.imei}]`;
+          return str;
+        }).join(', ') || t.category,
+        t.workStatus || '-',
+        t.paymentSplit ? 'SPLIT' : t.paymentMethod,
+        formatCurrency(t.amount),
+        txCost > 0 ? formatCurrency(txCost) : '-',
+        (t.type === 'income' && txCost > 0) ? formatCurrency(txProfit) : (t.type === 'income' ? formatCurrency(t.amount) : '-'),
+        formatCurrency(t.due),
+        t.customer?.name || '-',
+        t.note || '-'
+      ];
+    });
 
     // Draw Main Transactions Table
     autoTable(doc, {
       startY: 50,
       margin: { left: 30, right: 30 },
-      head: [['Txn ID', 'Date & Time', 'Type', 'Category / Details', 'Status', 'Method', 'Total', 'Due', 'Customer', 'Note']],
+      head: [['Txn ID', 'Date & Time', 'Type', 'Category / Details', 'Status', 'Method', 'Total', 'Cost', 'Profit', 'Due', 'Customer', 'Note']],
       body: tableData,
       theme: 'grid',
-      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold', fontSize: 8 },
-      styles: { fontSize: mainFontSize, cellPadding: mainCellPadding },
+      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold', fontSize: 10, cellPadding: { top: 5, bottom: 5, left: 3, right: 3 }, valign: 'middle' },
+      styles: { fontSize: mainFontSize, cellPadding: mainCellPadding, valign: 'middle' },
+      columnStyles: {
+        6: { halign: 'right' },
+        7: { halign: 'right' },
+        8: { halign: 'right' },
+        9: { halign: 'right' }
+      },
       didParseCell: (data) => {
         if (data.section === 'body') {
           const rawRow = dataToExport[data.row.index];
@@ -597,8 +682,20 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
               }
             }
 
-            // Highlight due column in red if > 0
-            if (data.column.index === 7 && rawRow.due > 0) {
+            // Cost column (index 7)
+            if (data.column.index === 7 && data.cell.raw !== '-') {
+              data.cell.styles.textColor = [225, 29, 72];
+              data.cell.styles.fontStyle = 'bold';
+            }
+
+            // Profit column (index 8)
+            if (data.column.index === 8 && data.cell.raw !== '-') {
+              data.cell.styles.textColor = [22, 101, 52];
+              data.cell.styles.fontStyle = 'bold';
+            }
+
+            // Highlight due column (index 9) in red if > 0
+            if (data.column.index === 9 && rawRow.due > 0) {
               data.cell.styles.textColor = [220, 38, 38];
               data.cell.styles.fontStyle = 'bold';
             }
@@ -664,8 +761,8 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
         ['Total Outstanding Balance Due', formatCurrency(totalDue)]
       ],
       theme: 'grid',
-      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
-      styles: { fontSize: 7.5, cellPadding: 2, fontStyle: 'bold' },
+      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 10 },
+      styles: { fontSize: 9.5, cellPadding: 3, fontStyle: 'bold' },
       didParseCell: (data) => {
         if (data.section === 'body') {
           const rowIndex = data.row.index;
@@ -722,8 +819,8 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
         head: [['Staff Member', 'Shift Date', 'Time Range', 'Hours', 'Role / Note']],
         body: shiftTableData,
         theme: 'grid',
-        headStyles: { fillColor: [217, 119, 6], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
-        styles: { fontSize: 7.5, cellPadding: 2 },
+        headStyles: { fillColor: [217, 119, 6], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 10 },
+        styles: { fontSize: 9.5, cellPadding: 3 },
         didParseCell: (data) => {
           if (data.section === 'body') {
             const isTotalRow = data.row.index === shiftTableData.length - 1;
@@ -754,7 +851,7 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
     }
 
     // Static Single-Page Footer
-    doc.setFontSize(7.5);
+    doc.setFontSize(9.5);
     doc.setTextColor(148, 163, 184);
     doc.text("ALL CELLULAR AND REPAIR  •  925 W Baseline Rd, Tempe, AZ", 30, pageHeight - 15);
     doc.text("Page 1 of 1", doc.internal.pageSize.width - 60, pageHeight - 15);
