@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { FileSpreadsheet, FileText, Trash2, Utensils, Car, Home, Zap, Heart, ShoppingBag, Box, DollarSign, Wallet, Smartphone, Layers, Wrench, Hammer, Unlock, Store, Gamepad, Banknote, CreditCard, User, Phone, Mail, ShieldCheck, Fingerprint, Hash, Tablet, Sparkles, ToyBrick, Package, Watch, Cpu, ChevronDown } from 'lucide-react';
 import { Transaction } from '../types';
-import { formatCurrency, cn } from '../lib/utils';
+import { formatCurrency, cn, formatTransactionId, formatTxDateTime } from '../lib/utils';
 import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
@@ -64,8 +64,14 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
 
   const exportToExcel = async () => {
     const dataToExport = filteredForExport;
-    const wsData = dataToExport.map(t => ({
-      Date: t.date,
+    if (dataToExport.length === 0) {
+      alert("No data match the selected filters.");
+      return;
+    }
+
+    const wsData = dataToExport.map((t, index) => ({
+      Transaction_ID: formatTransactionId(t.id, index),
+      Date_Time: formatTxDateTime(t.date, t.createdAt),
       Type: t.type.toUpperCase(),
       Category: t.category,
       Status: t.workStatus || 'N/A',
@@ -99,40 +105,141 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
       ID_Number: t.customer?.idNumber || ''
     }));
 
-    if (wsData.length === 0) {
-      alert("No data match the selected filters.");
-      return;
-    }
-
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Transactions');
 
     // Define columns
-    if (wsData.length > 0) {
-      worksheet.columns = Object.keys(wsData[0]).map(key => ({ 
-        header: key, 
-        key: key, 
-        width: 15 
-      }));
-      worksheet.addRows(wsData);
+    worksheet.columns = Object.keys(wsData[0]).map(key => ({ 
+      header: key.replace(/_/g, ' '), 
+      key: key, 
+      width: 18 
+    }));
+    worksheet.addRows(wsData);
 
-      // Simple styling
-      worksheet.getRow(1).font = { bold: true };
-      worksheet.getRow(1).fill = {
+    // Header styling - Dark Navy background, White text, Centered
+    const headerRow = worksheet.getRow(1);
+    headerRow.height = 28;
+    headerRow.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+    headerRow.eachCell((cell) => {
+      cell.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FFE0E0E0' }
+        fgColor: { argb: 'FF0F172A' } // Slate-900
       };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border = {
+        bottom: { style: 'medium', color: { argb: 'FF334155' } }
+      };
+    });
 
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Report_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-    }
+    // Style each data row with individual colors based on Transaction Type!
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+
+      const typeValue = row.getCell('Type').value?.toString();
+
+      row.height = 22;
+      row.font = { name: 'Arial', size: 9 };
+
+      // Row colors: Income = Light Emerald, Expense = Light Rose, Refund = Light Amber
+      let bgArgb = 'FFFFFFFF';
+      let typeFontColor = 'FF1E293B';
+
+      if (typeValue === 'INCOME') {
+        bgArgb = 'FFECFDF5'; // Light Emerald
+        typeFontColor = 'FF047857'; // Dark Emerald
+      } else if (typeValue === 'EXPENSE') {
+        bgArgb = 'FFFFF1F2'; // Light Rose
+        typeFontColor = 'FFBE123C'; // Dark Rose
+      } else if (typeValue === 'REFUND') {
+        bgArgb = 'FFFFFBEB'; // Light Amber
+        typeFontColor = 'FFB45309'; // Dark Amber
+      }
+
+      row.eachCell({ includeEmpty: true }, (cell) => {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: bgArgb }
+        };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+        };
+        cell.alignment = { vertical: 'middle' };
+      });
+
+      // Type cell styling
+      const typeCell = row.getCell('Type');
+      typeCell.font = { name: 'Arial', size: 9, bold: true, color: { argb: typeFontColor } };
+      typeCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+      // Total cell styling
+      const totalCell = row.getCell('Total');
+      totalCell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF09090B' } };
+
+      // Due cell highlighting
+      const dueCell = row.getCell('Due');
+      if (Number(dueCell.value) > 0) {
+        dueCell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFDC2626' } };
+      }
+    });
+
+    // Calculate Financial Summaries for the bottom row
+    const totalInc = dataToExport.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+    const totalExp = dataToExport.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+    const totalRef = dataToExport.filter(t => t.type === 'refund').reduce((sum, t) => sum + t.amount, 0);
+    const netProfit = totalInc - totalExp - totalRef;
+    const totalDue = dataToExport.reduce((sum, t) => sum + (t.due || 0), 0);
+
+    // Empty separator row
+    worksheet.addRow({});
+
+    // Summary Totals Row
+    const summaryRow = worksheet.addRow({
+      Transaction_ID: 'TOTAL FINANCIAL SUMMARY',
+      Type: `INC: $${totalInc.toFixed(2)}`,
+      Category: `EXP: $${totalExp.toFixed(2)}`,
+      Status: `REF: $${totalRef.toFixed(2)}`,
+      Method: `NET: $${netProfit.toFixed(2)}`,
+      Total: dataToExport.reduce((sum, t) => sum + t.amount, 0),
+      Due: totalDue
+    });
+    summaryRow.height = 26;
+    summaryRow.eachCell({ includeEmpty: true }, (cell) => {
+      cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF0F172A' } };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFCBD5E1' } // Slate 300
+      };
+      cell.border = {
+        top: { style: 'medium', color: { argb: 'FF0F172A' } },
+        bottom: { style: 'double', color: { argb: 'FF0F172A' } }
+      };
+      cell.alignment = { vertical: 'middle' };
+    });
+
+    // Auto-adjust column widths
+    worksheet.columns.forEach((column) => {
+      let maxLen = column.header ? column.header.length : 12;
+      column.eachCell?.({ includeEmpty: true }, (cell) => {
+        const len = cell.value ? String(cell.value).length : 0;
+        if (len > maxLen) maxLen = len;
+      });
+      column.width = Math.min(Math.max(maxLen + 3, 12), 45);
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Report_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   const exportToPDF = () => {
@@ -143,17 +250,22 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
     }
     const doc = new jsPDF('l', 'pt', 'a4');
     
-    doc.setTextColor(40, 40, 40);
+    doc.setTextColor(15, 23, 42);
     doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
     doc.text("All Cellular & Repair - Transaction Report", 40, 40);
-    doc.setFontSize(10);
-    doc.text(`Generated on: ${format(new Date(), 'dd MMM yyyy, hh:mm a')}`, 40, 55);
+    
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Generated on: ${format(new Date(), 'dd MMM yyyy, hh:mm a')}`, 40, 54);
     if (exportFilters.startDate || exportFilters.endDate) {
-      doc.text(`Period: ${exportFilters.startDate || 'Start'} to ${exportFilters.endDate || 'End'}`, 40, 68);
+      doc.text(`Period: ${exportFilters.startDate || 'Start'} to ${exportFilters.endDate || 'End'}`, 40, 66);
     }
 
-    const tableData = dataToExport.map(t => [
-      format(new Date(t.date), 'dd/MM/yy'),
+    const tableData = dataToExport.map((t, index) => [
+      formatTransactionId(t.id, index),
+      formatTxDateTime(t.date, t.createdAt),
       t.type.toUpperCase(),
       t.items?.map(i => {
         let str = i.category;
@@ -172,11 +284,11 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
     ]);
 
     autoTable(doc, {
-      startY: 70,
-      head: [['Date', 'Type', 'Category', 'Status', 'Method', 'Total', 'Due', 'Customer', 'Note']],
+      startY: 75,
+      head: [['Txn ID', 'Date & Time', 'Type', 'Category / Details', 'Status', 'Method', 'Total', 'Due', 'Customer', 'Note']],
       body: tableData,
       theme: 'striped',
-      headStyles: { fillColor: [79, 70, 229], textColor: 255 },
+      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
       styles: { fontSize: 8, cellPadding: 5 },
       didDrawPage: (data) => {
         // Footer
@@ -184,6 +296,44 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
         doc.setTextColor(150);
         doc.text(`Page ${data.pageNumber}`, doc.internal.pageSize.width - 50, doc.internal.pageSize.height - 20);
         doc.text("ALL CELLULAR AND REPAIR | 925 W Baseline Rd, Tempe, AZ", 40, doc.internal.pageSize.height - 20);
+      }
+    });
+
+    // CALCULATE FINANCIAL TOTALS FOR PDF SUMMARY
+    const totalIncome = dataToExport.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+    const totalExpense = dataToExport.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+    const totalRefund = dataToExport.filter(t => t.type === 'refund').reduce((sum, t) => sum + t.amount, 0);
+    const netProfit = totalIncome - totalExpense - totalRefund;
+    const totalDue = dataToExport.reduce((sum, t) => sum + (t.due || 0), 0);
+
+    const finalY = (doc as any).lastAutoTable?.finalY || 100;
+    const pageHeight = doc.internal.pageSize.height;
+
+    // If remaining space on page is small, add a new page for summary
+    if (finalY > pageHeight - 140) {
+      doc.addPage();
+    }
+
+    const summaryStartY = (finalY > pageHeight - 140) ? 40 : finalY + 20;
+
+    autoTable(doc, {
+      startY: summaryStartY,
+      margin: { left: 40 },
+      tableWidth: 420,
+      head: [['Financial Metric Overview', 'Total Amount ($)']],
+      body: [
+        ['Total Income (+)', formatCurrency(totalIncome)],
+        ['Total Expenses (-)', formatCurrency(totalExpense)],
+        ['Total Refunds (-)', formatCurrency(totalRefund)],
+        ['Net Profit / Cash Flow', formatCurrency(netProfit)],
+        ['Total Outstanding Balance Due', formatCurrency(totalDue)]
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
+      styles: { fontSize: 8.5, cellPadding: 5, fontStyle: 'bold' },
+      columnStyles: {
+        0: { cellWidth: 240, fillColor: [248, 250, 252] },
+        1: { cellWidth: 180, halign: 'right' }
       }
     });
 
@@ -337,7 +487,12 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
                       </div>
                     )}
                   </div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">{t.category} • {format(new Date(t.date), 'dd MMM yyyy')}</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] flex items-center gap-1.5">
+                    <span className="px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-700 font-mono text-[9px] font-extrabold">
+                      {formatTransactionId(t.id, idx)}
+                    </span>
+                    <span>{t.category} • {formatTxDateTime(t.date, t.createdAt)}</span>
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-4">

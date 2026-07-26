@@ -18,7 +18,7 @@ import DailyStatement from './components/DailyStatement';
 import GoogleSheetsManagerModal from './components/GoogleSheetsManagerModal';
 import GmailManagerModal from './components/GmailManagerModal';
 import { Transaction, UserProfile, BudgetSummary, InventoryItem, PartUsage, WorkHour } from './types';
-import { cn, formatCurrency, uuid } from './lib/utils';
+import { cn, formatCurrency, uuid, generateNextTransactionId } from './lib/utils';
 import { format } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -263,7 +263,7 @@ export default function App() {
     } else {
       const transaction: Transaction = {
         ...newT,
-        id: uuid()
+        id: generateNextTransactionId(transactions)
       };
       await localStorageService.saveTransaction(transaction);
       // Manually refresh local state

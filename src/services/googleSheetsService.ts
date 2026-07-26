@@ -1,5 +1,5 @@
 import { Transaction, InventoryItem, WorkHour } from '../types';
-import { formatCurrency } from '../lib/utils';
+import { formatCurrency, formatTransactionId, formatTxDateTime } from '../lib/utils';
 import { format } from 'date-fns';
 import { clearAccessToken } from './googleSheetsAuth';
 
@@ -111,9 +111,9 @@ export const googleSheetsService = {
       'Work Status',
     ];
 
-    const rows = transactions.map((t) => [
-      t.id,
-      format(new Date(t.date), 'yyyy-MM-dd HH:mm'),
+    const rows = transactions.map((t, idx) => [
+      formatTransactionId(t.id, idx),
+      formatTxDateTime(t.date, t.createdAt),
       t.type.toUpperCase(),
       t.category,
       t.amount,

@@ -3,7 +3,7 @@ import { Mail, Send, RefreshCw, LogIn, CheckCircle2, AlertCircle, Sparkles, File
 import { googleSignIn, getAccessToken, logoutGoogle, initAuth } from '../services/googleSheetsAuth';
 import { gmailService, GmailProfile, GmailMessageSummary } from '../services/gmailService';
 import { Transaction, InventoryItem, WorkHour } from '../types';
-import { formatCurrency } from '../lib/utils';
+import { formatCurrency, formatTransactionId } from '../lib/utils';
 import { format } from 'date-fns';
 
 interface GmailManagerModalProps {
@@ -120,7 +120,8 @@ export default function GmailManagerModal({
   const applyTemplate = (templateType: 'receipt' | 'daily' | 'lowstock', txId?: string) => {
     setSelectedTemplate(templateType);
     if (templateType === 'receipt') {
-      const tx = transactions.find(t => t.id === txId) || transactions[0];
+      const txIdx = transactions.findIndex(t => t.id === txId);
+      const tx = txIdx !== -1 ? transactions[txIdx] : transactions[0];
       if (!tx) {
         setSubject('Sales Receipt - Cell Terminal');
         setBody('<p>Thank you for your business!</p>');
@@ -129,7 +130,8 @@ export default function GmailManagerModal({
       if (tx.customer?.email) {
         setRecipient(tx.customer.email);
       }
-      setSubject(`Receipt for Order #${tx.id.slice(-6).toUpperCase()} - Cell Terminal`);
+      const serialId = formatTransactionId(tx.id, txIdx !== -1 ? txIdx : 0);
+      setSubject(`Receipt for Order #${serialId} - Cell Terminal`);
       const itemDesc = tx.items.map(i => `${i.category}${i.model ? ` (${i.model})` : ''}`).join(', ') || tx.category;
       const txDateStr = tx.date || (tx.createdAt ? new Date(tx.createdAt).toISOString() : new Date().toISOString());
 
@@ -462,9 +464,9 @@ export default function GmailManagerModal({
                       className="text-xs font-bold bg-white border border-slate-300 rounded-lg px-2 py-1 text-slate-700 outline-none"
                     >
                       <option value="">Select Transaction...</option>
-                      {transactions.map((tx) => (
+                      {transactions.map((tx, idx) => (
                         <option key={tx.id} value={tx.id}>
-                          #{tx.id.slice(-6).toUpperCase()} - {tx.customer?.name || 'Customer'} (${tx.amount})
+                          #{formatTransactionId(tx.id, idx)} - {tx.customer?.name || 'Customer'} (${tx.amount})
                         </option>
                       ))}
                     </select>

@@ -1,7 +1,7 @@
 import { useState, FormEvent, useEffect, useMemo } from 'react';
 import { User, Phone, PlusCircle, CreditCard, Banknote, DollarSign, Zap, Plus, X, Edit3, ArrowRight, ArrowLeft, CheckCircle2, ShoppingBag, UserCircle, Receipt } from 'lucide-react';
 import { Category, Transaction, TransactionType, PaymentMethod, TransactionItem, WorkStatus } from '../types';
-import { cn } from '../lib/utils';
+import { cn, toDatetimeLocalString } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface TransactionFormProps {
@@ -58,7 +58,7 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
   const [idNumber, setIdNumber] = useState('');
   const [showCustomer, setShowCustomer] = useState(false);
   const [note, setNote] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(toDatetimeLocalString());
 
   useEffect(() => {
     if (editingTransaction) {
@@ -76,7 +76,7 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
       }
       setCashReceived(editingTransaction.cashReceived?.toString() || '');
       setNote(editingTransaction.note || '');
-      setDate(editingTransaction.date);
+      setDate(toDatetimeLocalString(editingTransaction.date || editingTransaction.createdAt));
       setCustomerName(editingTransaction.customer?.name || '');
       setCustomerPhone(editingTransaction.customer?.phone || '');
       setCustomerEmail(editingTransaction.customer?.email || '');
@@ -198,7 +198,8 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
         idNumber
       } : undefined,
       note,
-      date
+      date: date || new Date().toISOString(),
+      createdAt: editingTransaction?.createdAt || new Date().toISOString()
     });
 
     setItems([]);
@@ -211,6 +212,7 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
     setWorkStatus('Not Started');
     setCashReceived('');
     setNote('');
+    setDate(toDatetimeLocalString());
     setCustomerName('');
     setCustomerPhone('');
     setCustomerEmail('');
@@ -351,13 +353,12 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-widest pl-1">Transaction Date</label>
+                  <label className="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-widest pl-1">Transaction Date & Time</label>
                   <input
-                    type="date"
+                    type="datetime-local"
                     value={date}
-                    max="3036-12-31"
                     onChange={(e) => setDate(e.target.value)}
-                    className="glass-input h-14 w-full px-6 text-base font-black bg-white border-slate-200"
+                    className="glass-input h-14 w-full px-6 text-base font-black bg-white border-slate-200 cursor-pointer"
                   />
                 </div>
                 <div>
