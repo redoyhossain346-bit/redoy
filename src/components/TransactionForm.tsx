@@ -32,6 +32,7 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
   const [type, setType] = useState<TransactionType>('income');
   const [items, setItems] = useState<TransactionItem[]>([]);
   const [itemCategory, setItemCategory] = useState<Category>('Labor');
+  const [itemCost, setItemCost] = useState('');
   const [itemAmount, setItemAmount] = useState('');
   const [itemQuantity, setItemQuantity] = useState('1');
   const [deviceModel, setDeviceModel] = useState('');
@@ -158,7 +159,9 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
 
   // Calculations
   const sVal = useMemo(() => items.reduce((acc, curr) => acc + (curr.amount * curr.quantity), 0), [items]);
+  const totalCostVal = useMemo(() => items.reduce((acc, curr) => acc + ((curr.cost || 0) * curr.quantity), 0), [items]);
   const dVal = parseFloat(discount) || 0;
+  const totalProfitVal = useMemo(() => (sVal - dVal) - totalCostVal, [sVal, dVal, totalCostVal]);
   
   // Handle Advance calculation based on split if active
   const sCashVal = parseFloat(splitCash) || 0;
@@ -194,6 +197,7 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
 
   const addItem = () => {
     const amt = parseFloat(itemAmount);
+    const cost = parseFloat(itemCost);
     const qty = parseInt(itemQuantity) || 1;
     if (!amt || isNaN(amt)) return;
     
@@ -204,6 +208,7 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
       id: Math.random().toString(36).substr(2, 9),
       category: itemCategory,
       amount: amt,
+      cost: (!isNaN(cost) && cost >= 0) ? cost : undefined,
       quantity: qty,
       ...(isDeviceSell ? {
         model: deviceModel,
@@ -219,6 +224,7 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
     }]);
     
     setItemAmount('');
+    setItemCost('');
     setItemQuantity('1');
     if (isDeviceSell) {
       setDeviceModel('');
@@ -251,6 +257,8 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
       tax: taxVal,
       advance: aVal,
       due: dueAmount,
+      totalCost: totalCostVal,
+      profit: totalProfitVal,
       items,
       type,
       category: items[0].category, // Primary category for summary
@@ -504,45 +512,71 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
               {/* Item Builder */}
               <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4 shadow-sm">
                 <div className="flex items-center justify-between">
-                  <label className="text-base font-black text-slate-400 block uppercase tracking-[0.2em]">Add Products/Services</label>
+                  <label className="text-base font-black text-slate-400 block uppercase tracking-[0.2em]">Add Products / Services</label>
+                  {itemAmount && itemCost && (
+                    <div className="flex items-center gap-2 text-[10px] font-black uppercase px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <span>Profit / Money Made:</span>
+                      <span className="font-mono text-xs">
+                        +${(((parseFloat(itemAmount) || 0) - (parseFloat(itemCost) || 0)) * (parseInt(itemQuantity) || 1)).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <div className="flex gap-4">
+                <div className="flex flex-wrap sm:flex-nowrap gap-3">
                   <select
                     value={itemCategory}
                     onChange={(e) => setItemCategory(e.target.value as Category)}
-                    className="glass-input h-16 flex-1 pr-12 text-lg font-black appearance-none border-slate-200 bg-white"
+                    className="glass-input h-16 flex-1 pr-8 text-base font-black appearance-none border-slate-200 bg-white min-w-[140px]"
                   >
                     {CATEGORIES.map(cat => (
                       <option key={cat} value={cat} className="bg-white">{cat}</option>
                     ))}
                   </select>
-                  <div className="relative w-28">
+
+                  <div className="relative w-24">
                     <input
                       type="number"
                       value={itemQuantity}
                       onChange={(e) => setItemQuantity(e.target.value)}
                       placeholder="Qty"
-                      className="glass-input h-16 w-full px-2 text-lg font-black text-center border-slate-200 bg-white"
+                      className="glass-input h-16 w-full px-2 text-base font-black text-center border-slate-200 bg-white"
                     />
-                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-black text-amber-600 bg-white px-1.5 uppercase tracking-widest leading-none border border-amber-600/10 shadow-sm rounded-full">QTY</span>
+                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] font-black text-amber-600 bg-white px-1.5 uppercase tracking-widest leading-none border border-amber-600/10 shadow-xs rounded-full">QTY</span>
                   </div>
-                  <div className="relative w-40">
-                    <DollarSign size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+
+                  <div className="relative w-32">
+                    <DollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-400" />
                     <input
                       type="number"
+                      step="0.01"
+                      value={itemCost}
+                      onChange={(e) => setItemCost(e.target.value)}
+                      placeholder="Cost"
+                      className="glass-input h-16 w-full pl-8 pr-2 text-base font-black border-slate-200 bg-white text-rose-600"
+                    />
+                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] font-black text-rose-600 bg-white px-1.5 uppercase tracking-widest leading-none border border-rose-600/10 shadow-xs rounded-full">COST</span>
+                  </div>
+
+                  <div className="relative w-36">
+                    <DollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-500" />
+                    <input
+                      type="number"
+                      step="0.01"
                       value={itemAmount}
                       onChange={(e) => setItemAmount(e.target.value)}
-                      placeholder="Price"
-                      className="glass-input h-16 w-full pl-10 text-lg font-black border-slate-200 bg-white"
+                      placeholder="Sell Price"
+                      className="glass-input h-16 w-full pl-8 pr-2 text-base font-black border-slate-200 bg-white text-emerald-600"
                     />
-                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-black text-amber-600 bg-white px-1.5 uppercase tracking-widest leading-none border border-amber-600/10 shadow-sm rounded-full">PRICE</span>
+                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] font-black text-emerald-600 bg-white px-1.5 uppercase tracking-widest leading-none border border-emerald-600/10 shadow-xs rounded-full">PRICE</span>
                   </div>
+
                   <button
                     type="button"
                     onClick={addItem}
-                    className="h-16 px-8 bg-amber-500 hover:bg-amber-400 text-white rounded-[1.25rem] transition-all duration-300 flex items-center justify-center shadow-lg shadow-amber-500/10 active:scale-95 border border-amber-600/20"
+                    className="h-16 px-6 bg-amber-500 hover:bg-amber-400 text-white rounded-[1.25rem] transition-all duration-300 flex items-center justify-center shadow-lg shadow-amber-500/10 active:scale-95 border border-amber-600/20 cursor-pointer"
+                    title="Add Item"
                   >
-                    <Plus size={32} />
+                    <Plus size={28} />
                   </button>
                 </div>
 
@@ -571,27 +605,73 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
                 <div className="mt-6 space-y-3">
                   <div className="flex items-center justify-between px-2">
                     <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Selected Items ({items.length})</h4>
-                    <span className="text-sm font-black text-emerald-600 font-mono">${sVal.toFixed(2)}</span>
+                    <div className="flex items-center gap-3 text-xs font-black">
+                      <span className="text-slate-500">Sell Total: <span className="text-emerald-600 font-mono">${sVal.toFixed(2)}</span></span>
+                      {totalCostVal > 0 && (
+                        <span className="text-slate-500">Cost: <span className="text-rose-500 font-mono">${totalCostVal.toFixed(2)}</span></span>
+                      )}
+                    </div>
                   </div>
-                  {items.map(item => (
-                    <div key={item.id} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm group">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 font-black text-[10px]">
-                          {item.quantity}x
+                  {items.map(item => {
+                    const itemTotalSell = item.amount * item.quantity;
+                    const itemTotalCost = (item.cost || 0) * item.quantity;
+                    const itemProfit = itemTotalSell - itemTotalCost;
+
+                    return (
+                      <div key={item.id} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm group">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 font-black text-[10px]">
+                            {item.quantity}x
+                          </div>
+                          <div>
+                            <div className="text-sm font-black text-slate-800 uppercase tracking-tight">{item.category}</div>
+                            {item.model && <div className="text-[8px] font-black text-indigo-500 uppercase">{item.model} • {item.imei}</div>}
+                            <div className="flex items-center gap-2 mt-0.5 text-[10px] font-black">
+                              {item.cost !== undefined && item.cost > 0 && (
+                                <span className="text-rose-500/80">Cost: ${item.cost.toFixed(2)} ea</span>
+                              )}
+                              <span className="text-slate-500">Sell: ${item.amount.toFixed(2)} ea</span>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="text-sm font-black text-slate-800 uppercase tracking-tight">{item.category}</div>
-                          {item.model && <div className="text-[8px] font-black text-indigo-500 uppercase">{item.model} • {item.imei}</div>}
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <div className="text-sm font-black text-slate-900 font-mono">${itemTotalSell.toFixed(2)}</div>
+                            {item.cost !== undefined && item.cost > 0 && (
+                              <div className="text-[10px] font-black text-emerald-600">
+                                Profit: +${itemProfit.toFixed(2)}
+                              </div>
+                            )}
+                          </div>
+                          <button type="button" onClick={() => removeItem(item.id)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors cursor-pointer">
+                            <X size={18} />
+                          </button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <span className="text-sm font-black text-slate-900 font-mono">${(item.amount * item.quantity).toFixed(2)}</span>
-                        <button type="button" onClick={() => removeItem(item.id)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors">
-                          <X size={18} />
-                        </button>
+                    );
+                  })}
+
+                  {/* Summary Footer for Costing & Money Made */}
+                  <div className="p-4 bg-slate-900 rounded-2xl text-white flex flex-wrap items-center justify-between gap-3 shadow-md">
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider block">Total Items Cost</span>
+                        <span className="text-base font-black font-mono text-rose-400">${totalCostVal.toFixed(2)}</span>
+                      </div>
+                      <div className="h-8 w-px bg-slate-800" />
+                      <div>
+                        <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider block">Gross Sales</span>
+                        <span className="text-base font-black font-mono text-emerald-400">${sVal.toFixed(2)}</span>
                       </div>
                     </div>
-                  ))}
+
+                    <div className="bg-emerald-500/20 border border-emerald-500/40 px-4 py-2 rounded-xl text-right">
+                      <span className="text-[9px] font-black uppercase text-emerald-300 tracking-widest block">Net Money Made (Profit)</span>
+                      <span className="text-lg font-black font-mono text-emerald-400">
+                        +${(sVal - totalCostVal).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -762,6 +842,19 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
                       <span className="text-sm font-black uppercase tracking-widest text-slate-900">Total Amount</span>
                       <span className="text-3xl font-black text-amber-600 font-mono tracking-tighter">${totalAmount.toFixed(2)}</span>
                     </div>
+
+                    {totalCostVal > 0 && (
+                      <div className="pt-3 mt-3 border-t border-slate-200 flex items-center justify-between bg-emerald-50/70 p-3 rounded-xl border border-emerald-100">
+                        <div>
+                          <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 block">Costing Analysis</span>
+                          <span className="text-[10px] font-bold text-rose-500 font-mono">Total Cost: ${totalCostVal.toFixed(2)}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[9px] font-black uppercase tracking-widest text-emerald-700 block">Money Made (Profit)</span>
+                          <span className="text-sm font-black text-emerald-600 font-mono">+${totalProfitVal.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

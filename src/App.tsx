@@ -33,6 +33,13 @@ export default function App() {
   const [user, setUser] = useState<UserProfile>({ name: 'Terminal Admin' });
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [lastLoginTime, setLastLoginTime] = useState<string>(() => {
+    const saved = localStorage.getItem('admin_last_login_time');
+    if (saved) return saved;
+    const now = new Date().toISOString();
+    localStorage.setItem('admin_last_login_time', now);
+    return now;
+  });
   const [authError, setAuthError] = useState<string | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isGoogleSheetsOpen, setIsGoogleSheetsOpen] = useState(false);
@@ -174,7 +181,7 @@ export default function App() {
     sessionStorage.removeItem('glass_budget_session');
     setPasscodeModal({
       isOpen: true,
-      onSuccess: () => setIsLoggedIn(true),
+      onSuccess: handleLoginSuccess,
       allowClose: false
     });
   };
@@ -182,6 +189,9 @@ export default function App() {
   const handleLoginSuccess = () => {
     setIsLoggedIn(true);
     sessionStorage.setItem('glass_budget_session', 'active');
+    const now = new Date().toISOString();
+    setLastLoginTime(now);
+    localStorage.setItem('admin_last_login_time', now);
   };
 
   const filteredTransactions = useMemo(() => {
@@ -391,6 +401,7 @@ export default function App() {
         onOpenGoogleSheets={() => setIsGoogleSheetsOpen(true)}
         onOpenGmail={() => setIsGmailOpen(true)}
         isSheetsConnected={hasGoogleToken}
+        lastLoginTime={lastLoginTime}
       />
       
       <PasscodeModal 

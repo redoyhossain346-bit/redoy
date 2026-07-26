@@ -90,6 +90,7 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
       Status: t.workStatus || 'N/A',
       Items: t.items?.map(i => {
         let details = `${i.category}($${i.amount})`;
+        if (i.cost) details += ` [Cost:$${i.cost}]`;
         if (i.model) details += ` | Mod:${i.model}`;
         if (i.imei) details += ` | IMEI:${i.imei}`;
         if (i.storage) details += ` | GB:${i.storage}`;
@@ -104,6 +105,8 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
       Card: t.paymentSplit?.card || (t.paymentMethod === 'CARD' ? t.amount : 0),
       Zelle: t.paymentSplit?.zelle || (t.paymentMethod === 'ZELLE' ? t.amount : 0),
       SubTotal: t.subTotal,
+      Cost: t.totalCost || t.items?.reduce((acc, i) => acc + ((i.cost || 0) * i.quantity), 0) || 0,
+      Profit: t.profit !== undefined ? t.profit : ((t.subTotal - t.discount) - (t.totalCost || t.items?.reduce((acc, i) => acc + ((i.cost || 0) * i.quantity), 0) || 0)),
       Discount: t.discount,
       Tax: t.tax,
       Total: t.amount,
@@ -519,19 +522,27 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
       return;
     }
     const doc = new jsPDF('l', 'pt', 'a4');
+    const pageHeight = doc.internal.pageSize.height;
+    const rowCount = dataToExport.length;
     
+    // Dynamic sizing to guarantee single page fit
+    const mainFontSize = rowCount > 15 ? 7 : 7.5;
+    const mainCellPadding = rowCount > 15 ? 2 : 2.5;
+
+    // Title Header
     doc.setTextColor(15, 23, 42);
-    doc.setFontSize(18);
+    doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text("All Cellular & Repair - Transaction Report", 40, 40);
+    doc.text("All Cellular & Repair - Transaction & Financial Report", 30, 30);
     
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 116, 139);
-    doc.text(`Generated on: ${format(new Date(), 'dd MMM yyyy, hh:mm a')}`, 40, 54);
+    let subtitleText = `Generated: ${format(new Date(), 'dd MMM yyyy, hh:mm a')}`;
     if (exportFilters.startDate || exportFilters.endDate) {
-      doc.text(`Period: ${exportFilters.startDate || 'Start'} to ${exportFilters.endDate || 'End'}`, 40, 66);
+      subtitleText += `  |  Period: ${exportFilters.startDate || 'Start'} to ${exportFilters.endDate || 'End'}`;
     }
+    doc.text(subtitleText, 30, 43);
 
     const tableData = dataToExport.map((t, index) => [
       formatTransactionId(t.id, index),
@@ -553,13 +564,15 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
       t.note || '-'
     ]);
 
+    // Draw Main Transactions Table
     autoTable(doc, {
-      startY: 75,
+      startY: 50,
+      margin: { left: 30, right: 30 },
       head: [['Txn ID', 'Date & Time', 'Type', 'Category / Details', 'Status', 'Method', 'Total', 'Due', 'Customer', 'Note']],
       body: tableData,
       theme: 'grid',
-      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
-      styles: { fontSize: 8, cellPadding: 5 },
+      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+      styles: { fontSize: mainFontSize, cellPadding: mainCellPadding },
       didParseCell: (data) => {
         if (data.section === 'body') {
           const rawRow = dataToExport[data.row.index];
@@ -567,19 +580,19 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
             if (rawRow.type === 'income') {
               data.cell.styles.fillColor = [236, 253, 245]; // Soft Emerald Green
               if (data.column.index === 2 || data.column.index === 6) { // Type & Total
-                data.cell.styles.textColor = [4, 120, 87]; // Emerald Green
+                data.cell.styles.textColor = [4, 120, 87];
                 data.cell.styles.fontStyle = 'bold';
               }
             } else if (rawRow.type === 'refund') {
               data.cell.styles.fillColor = [254, 242, 242]; // Soft Red
-              if (data.column.index === 2 || data.column.index === 6) { // Type & Total
-                data.cell.styles.textColor = [220, 38, 38]; // Bright Red
+              if (data.column.index === 2 || data.column.index === 6) {
+                data.cell.styles.textColor = [220, 38, 38];
                 data.cell.styles.fontStyle = 'bold';
               }
             } else if (rawRow.type === 'expense') {
               data.cell.styles.fillColor = [255, 241, 242]; // Soft Rose
-              if (data.column.index === 2 || data.column.index === 6) { // Type & Total
-                data.cell.styles.textColor = [190, 18, 60]; // Dark Rose
+              if (data.column.index === 2 || data.column.index === 6) {
+                data.cell.styles.textColor = [190, 18, 60];
                 data.cell.styles.fontStyle = 'bold';
               }
             }
@@ -591,13 +604,6 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
             }
           }
         }
-      },
-      didDrawPage: (data) => {
-        // Footer
-        doc.setFontSize(8);
-        doc.setTextColor(150);
-        doc.text(`Page ${data.pageNumber}`, doc.internal.pageSize.width - 50, doc.internal.pageSize.height - 20);
-        doc.text("ALL CELLULAR AND REPAIR | 925 W Baseline Rd, Tempe, AZ", 40, doc.internal.pageSize.height - 20);
       }
     });
 
@@ -605,7 +611,8 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
     const totalIncome = dataToExport.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
     const totalExpense = dataToExport.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
     const totalRefund = dataToExport.filter(t => t.type === 'refund').reduce((sum, t) => sum + t.amount, 0);
-    const netProfit = totalIncome - totalExpense - totalRefund;
+    const pdfTotalCost = dataToExport.reduce((sum, t) => sum + (t.totalCost || t.items?.reduce((acc, i) => acc + ((i.cost || 0) * i.quantity), 0) || 0), 0);
+    const netProfit = totalIncome - pdfTotalCost - totalExpense - totalRefund;
     const totalDue = dataToExport.reduce((sum, t) => sum + (t.due || 0), 0);
 
     let pdfCashIncome = 0;
@@ -635,71 +642,62 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
     });
 
     const finalY = (doc as any).lastAutoTable?.finalY || 100;
-    const pageHeight = doc.internal.pageSize.height;
+    const summaryStartY = Math.min(finalY + 10, pageHeight - 180);
+    const hasShiftLogs = filteredWorkHoursForExport.length > 0;
 
-    // If remaining space on page is small, add a new page for summary
-    if (finalY > pageHeight - 220) {
-      doc.addPage();
-    }
-
-    const summaryStartY = (finalY > pageHeight - 220) ? 40 : finalY + 20;
-
+    // Draw Financial Overview Table (Left Column)
     autoTable(doc, {
       startY: summaryStartY,
-      margin: { left: 40 },
-      tableWidth: 460,
-      head: [['Financial Metric Overview', 'Total Amount ($)']],
+      margin: { left: 30 },
+      tableWidth: hasShiftLogs ? 380 : 480,
+      head: [['Financial Metric Overview', 'Amount ($)']],
       body: [
-        ['Total Income (+)', formatCurrency(totalIncome)],
-        ['  • Total Cash Income', formatCurrency(pdfCashIncome)],
-        ['  • Total Card Income', formatCurrency(pdfCardIncome)],
-        ['Total Expenses (-)', formatCurrency(totalExpense)],
-        ['Total Refunds (-)', formatCurrency(totalRefund)],
-        ['  • Total Cash Refund', formatCurrency(pdfCashRefund)],
-        ['  • Total Card Refund', formatCurrency(pdfCardRefund)],
-        ['Net Profit / Cash Flow', formatCurrency(netProfit)],
+        ['Total Gross Sales / Income (+)', formatCurrency(totalIncome)],
+        ['  • Cash Sales', formatCurrency(pdfCashIncome)],
+        ['  • Card Sales', formatCurrency(pdfCardIncome)],
+        ['Total Items / Products Cost (-)', formatCurrency(pdfTotalCost)],
+        ['Total Business Expenses (-)', formatCurrency(totalExpense)],
+        ['Total Customer Refunds (-)', formatCurrency(totalRefund)],
+        ['  • Cash Refund', formatCurrency(pdfCashRefund)],
+        ['  • Card Refund', formatCurrency(pdfCardRefund)],
+        ['Net Profit / Money Made', formatCurrency(netProfit)],
         ['Total Outstanding Balance Due', formatCurrency(totalDue)]
       ],
       theme: 'grid',
-      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
-      styles: { fontSize: 8.5, cellPadding: 5, fontStyle: 'bold' },
+      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+      styles: { fontSize: 7.5, cellPadding: 2, fontStyle: 'bold' },
       didParseCell: (data) => {
         if (data.section === 'body') {
           const rowIndex = data.row.index;
           if (rowIndex === 0 || rowIndex === 1 || rowIndex === 2) {
-            data.cell.styles.fillColor = [236, 253, 245]; // Emerald light
+            data.cell.styles.fillColor = [236, 253, 245];
             data.cell.styles.textColor = [4, 120, 87];
           } else if (rowIndex === 3) {
-            data.cell.styles.fillColor = [255, 241, 242]; // Rose light
+            data.cell.styles.fillColor = [255, 241, 242];
+            data.cell.styles.textColor = [225, 29, 72];
+          } else if (rowIndex === 4) {
+            data.cell.styles.fillColor = [255, 241, 242];
             data.cell.styles.textColor = [190, 18, 60];
-          } else if (rowIndex === 4 || rowIndex === 5 || rowIndex === 6) {
-            data.cell.styles.fillColor = [254, 242, 242]; // Red light
+          } else if (rowIndex === 5 || rowIndex === 6 || rowIndex === 7) {
+            data.cell.styles.fillColor = [254, 242, 242];
             data.cell.styles.textColor = [220, 38, 38];
-          } else if (rowIndex === 7) {
-            data.cell.styles.fillColor = [226, 232, 240]; // Slate-200
-            data.cell.styles.textColor = [15, 23, 42];
           } else if (rowIndex === 8) {
+            data.cell.styles.fillColor = [220, 252, 231];
+            data.cell.styles.textColor = [22, 101, 52];
+          } else if (rowIndex === 9) {
             data.cell.styles.fillColor = [254, 242, 242];
             data.cell.styles.textColor = [220, 38, 38];
           }
         }
       },
       columnStyles: {
-        0: { cellWidth: 280 },
-        1: { cellWidth: 180, halign: 'right' }
+        0: { cellWidth: hasShiftLogs ? 250 : 320 },
+        1: { cellWidth: hasShiftLogs ? 130 : 160, halign: 'right' }
       }
     });
 
-    // STAFF SHIFT LOGS TABLE IN PDF EXPORT
-    if (filteredWorkHoursForExport.length > 0) {
-      const shiftPdfY = (doc as any).lastAutoTable?.finalY || 100;
-      const pdfPageH = doc.internal.pageSize.height;
-
-      const shiftStartPdfY = (shiftPdfY > pdfPageH - 180) ? 40 : shiftPdfY + 20;
-      if (shiftPdfY > pdfPageH - 180) {
-        doc.addPage();
-      }
-
+    // Draw Staff Shift Logs Table (Right Column side-by-side)
+    if (hasShiftLogs) {
       const shiftTableData = filteredWorkHoursForExport.map(h => [
         h.employeeName || 'Staff Member',
         formatDateSafe(h.date, 'dd MMM yyyy'),
@@ -718,14 +716,14 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
       ]);
 
       autoTable(doc, {
-        startY: shiftStartPdfY,
-        margin: { left: 40 },
-        tableWidth: 600,
-        head: [['Staff Member Name', 'Shift Date', 'Time-Wise Range', 'Hours Logged', 'Activity / Role Note']],
+        startY: summaryStartY,
+        margin: { left: 425 },
+        tableWidth: 385,
+        head: [['Staff Member', 'Shift Date', 'Time Range', 'Hours', 'Role / Note']],
         body: shiftTableData,
         theme: 'grid',
-        headStyles: { fillColor: [217, 119, 6], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
-        styles: { fontSize: 8.5, cellPadding: 5 },
+        headStyles: { fillColor: [217, 119, 6], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+        styles: { fontSize: 7.5, cellPadding: 2 },
         didParseCell: (data) => {
           if (data.section === 'body') {
             const isTotalRow = data.row.index === shiftTableData.length - 1;
@@ -746,14 +744,20 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
           }
         },
         columnStyles: {
-          0: { cellWidth: 140 },
-          1: { cellWidth: 90 },
-          2: { cellWidth: 150 },
-          3: { cellWidth: 80 },
-          4: { cellWidth: 140 }
+          0: { cellWidth: 95 },
+          1: { cellWidth: 70 },
+          2: { cellWidth: 90 },
+          3: { cellWidth: 50 },
+          4: { cellWidth: 80 }
         }
       });
     }
+
+    // Static Single-Page Footer
+    doc.setFontSize(7.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text("ALL CELLULAR AND REPAIR  •  925 W Baseline Rd, Tempe, AZ", 30, pageHeight - 15);
+    doc.text("Page 1 of 1", doc.internal.pageSize.width - 60, pageHeight - 15);
 
     doc.save(`Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };
@@ -952,33 +956,63 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
               {/* Items List */}
               {t.items && t.items.length > 0 && (
                 <div className="mb-2 space-y-2">
-                  {t.items.map(item => (
-                    <div key={item.id} className="flex flex-col gap-1 border-l-2 border-amber-200 pl-3">
-                      <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                        <span>• {item.category} <span className="text-[8px] text-slate-400 bg-white border border-slate-100 px-1.5 rounded ml-2 shadow-xs">x{item.quantity}</span></span>
-                        <span className="text-slate-800">{formatCurrency(item.amount * item.quantity)}</span>
-                      </div>
-                      {(item.model || item.imei || item.storage || item.color || item.warranty || item.carrier || item.phoneNumber) && (
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[8px] font-black text-slate-400 uppercase tracking-tighter">
-                          {item.model && <div className="truncate">Model: <span className="text-amber-600">{item.model}</span></div>}
-                          {item.imei && <div className="truncate">IMEI: <span className="text-amber-600">{item.imei}</span></div>}
-                          {item.storage && <div>GB: <span className="text-amber-600">{item.storage}</span></div>}
-                          {item.color && <div>Color: <span className="text-amber-600">{item.color}</span></div>}
-                          {item.carrier && <div className="truncate">Carrier: <span className="text-amber-600">{item.carrier}</span></div>}
-                          {item.phoneNumber && <div className="truncate">Num: <span className="text-amber-600">{item.phoneNumber}</span></div>}
-                          {item.warranty && <div className="col-span-2 italic text-amber-600/80 leading-none">Security Warranty: {item.warranty}</div>}
+                  {t.items.map(item => {
+                    const itemSellTotal = item.amount * item.quantity;
+                    const itemCostTotal = (item.cost || 0) * item.quantity;
+                    const itemProfit = itemSellTotal - itemCostTotal;
+
+                    return (
+                      <div key={item.id} className="flex flex-col gap-1 border-l-2 border-amber-200 pl-3">
+                        <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                          <span className="flex items-center gap-1.5">
+                            • {item.category} 
+                            <span className="text-[8px] text-slate-400 bg-white border border-slate-100 px-1.5 rounded shadow-xs">x{item.quantity}</span>
+                            {item.cost !== undefined && item.cost > 0 && (
+                              <span className="text-[8px] font-bold text-rose-500 bg-rose-50 px-1.5 rounded border border-rose-100">
+                                Cost: {formatCurrency(itemCostTotal)}
+                              </span>
+                            )}
+                          </span>
+                          <div className="text-right">
+                            <span className="text-slate-800">{formatCurrency(itemSellTotal)}</span>
+                            {item.cost !== undefined && item.cost > 0 && (
+                              <span className="text-[8px] font-black text-emerald-600 block">
+                                Profit: +{formatCurrency(itemProfit)}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        {(item.model || item.imei || item.storage || item.color || item.warranty || item.carrier || item.phoneNumber) && (
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[8px] font-black text-slate-400 uppercase tracking-tighter">
+                            {item.model && <div className="truncate">Model: <span className="text-amber-600">{item.model}</span></div>}
+                            {item.imei && <div className="truncate">IMEI: <span className="text-amber-600">{item.imei}</span></div>}
+                            {item.storage && <div>GB: <span className="text-amber-600">{item.storage}</span></div>}
+                            {item.color && <div>Color: <span className="text-amber-600">{item.color}</span></div>}
+                            {item.carrier && <div className="truncate">Carrier: <span className="text-amber-600">{item.carrier}</span></div>}
+                            {item.phoneNumber && <div className="truncate">Num: <span className="text-amber-600">{item.phoneNumber}</span></div>}
+                            {item.warranty && <div className="col-span-2 italic text-amber-600/80 leading-none">Security Warranty: {item.warranty}</div>}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
               
-              <div className="flex flex-wrap gap-x-3 gap-y-1 text-[9px] font-black border-t border-slate-200 pt-2">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[9px] font-black border-t border-slate-200 pt-2">
                 <div className="text-slate-400">Sub: <span className="text-slate-700">{formatCurrency(t.subTotal)}</span></div>
                 {t.discount > 0 && <div className="text-rose-500/70">Disc: <span className="text-rose-600">-{formatCurrency(t.discount)}</span></div>}
                 {t.tax > 0 && <div className="text-slate-400">Tax: <span className="text-slate-700">{formatCurrency(t.tax)}</span></div>}
                 {t.advance > 0 && <div className="text-emerald-500/70">Adv: <span className="text-emerald-600">-{formatCurrency(t.advance)}</span></div>}
+                
+                {((t.totalCost && t.totalCost > 0) || (t.items && t.items.some(i => i.cost && i.cost > 0))) && (
+                  <>
+                    <div className="text-rose-500">Cost: <span className="font-mono">{formatCurrency(t.totalCost || t.items?.reduce((a, b) => a + ((b.cost || 0) * b.quantity), 0) || 0)}</span></div>
+                    <div className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 ml-auto">
+                      Profit: <span className="font-mono text-emerald-600">+{formatCurrency(t.profit !== undefined ? t.profit : ((t.subTotal - t.discount) - (t.totalCost || 0)))}</span>
+                    </div>
+                  </>
+                )}
               </div>
               
               {t.paymentSplit && (

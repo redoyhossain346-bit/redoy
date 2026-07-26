@@ -37,6 +37,7 @@ export interface TransactionItem {
   id: string;
   category: Category;
   amount: number;
+  cost?: number;
   quantity: number;
   model?: string;
   imei?: string;
@@ -55,6 +56,8 @@ export interface Transaction {
   tax: number;
   advance: number;
   due: number;
+  totalCost?: number;
+  profit?: number;
   items: TransactionItem[];
   type: TransactionType;
   category: Category;

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { UserCircle, Check, Smartphone, MapPin, Phone, Mail, LogOut, LogIn, Download, FileSpreadsheet } from 'lucide-react';
+import { UserCircle, Check, Smartphone, MapPin, Phone, Mail, LogOut, LogIn, Download, FileSpreadsheet, Clock } from 'lucide-react';
 import { UserProfile } from '../types';
+import { format } from 'date-fns';
 
 interface HeaderProps {
   user: UserProfile;
@@ -14,6 +15,7 @@ interface HeaderProps {
   onOpenGmail?: () => void;
   isSheetsConnected?: boolean;
   isGmailConnected?: boolean;
+  lastLoginTime?: string;
 }
 
 export default function Header({ 
@@ -27,7 +29,8 @@ export default function Header({
   onOpenGoogleSheets,
   onOpenGmail,
   isSheetsConnected = false,
-  isGmailConnected = false
+  isGmailConnected = false,
+  lastLoginTime
 }: HeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user.name);
@@ -37,24 +40,46 @@ export default function Header({
     setIsEditing(false);
   };
 
+  const formatLoginTime = (timeStr?: string) => {
+    if (!timeStr) return '';
+    try {
+      const d = new Date(timeStr);
+      if (isNaN(d.getTime())) return timeStr;
+      return format(d, 'dd MMM yyyy, hh:mm:ss a');
+    } catch {
+      return timeStr;
+    }
+  };
+
   return (
     <header className="w-full mb-8 pb-6 border-b border-slate-200/80 bg-gradient-to-b from-slate-50/80 to-transparent rounded-b-3xl px-4 sm:px-6 py-4 shadow-2xs">
       {/* Top Admin Utility Bar */}
-      <div className="w-full flex items-center justify-between gap-3 pb-3.5 mb-4 border-b border-slate-200/60 flex-wrap sm:flex-nowrap">
-        {/* Left Side: App Install button or Terminal Badge */}
-        <div className="flex items-center gap-2">
-          {isInstallable && onInstall ? (
+      <div className="w-full flex items-center justify-between gap-3 pb-3.5 mb-4 border-b border-slate-200/60 flex-wrap">
+        {/* Left Side: Admin Terminal Badge, Last Login Time & Install App button */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-2.5 py-1.5 bg-slate-100 rounded-lg border border-slate-200/70 flex items-center gap-1.5 shrink-0 shadow-2xs">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            Admin Terminal
+          </span>
+
+          {lastLoginTime && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-900 text-[10px] font-bold shadow-2xs shrink-0">
+              <Clock size={12} className="text-amber-600 shrink-0" />
+              <span className="text-slate-500 uppercase tracking-wider text-[9px]">Last Login:</span>
+              <span className="font-mono font-black text-slate-800">
+                {formatLoginTime(lastLoginTime)}
+              </span>
+            </div>
+          )}
+
+          {isInstallable && onInstall && (
             <button 
               onClick={onInstall}
-              className="flex items-center gap-1.5 bg-amber-500 text-white px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-md hover:bg-amber-600 hover:scale-105 active:scale-95 transition-all"
+              className="flex items-center gap-1.5 bg-amber-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-md hover:bg-amber-600 hover:scale-105 active:scale-95 transition-all shrink-0 cursor-pointer"
             >
               <Download size={13} />
               <span>Install App</span>
             </button>
-          ) : (
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-2.5 py-1 bg-slate-100 rounded-lg border border-slate-200/60">
-              Admin Terminal
-            </span>
           )}
         </div>
 
