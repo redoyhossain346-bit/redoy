@@ -141,19 +141,19 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
       row.height = 22;
       row.font = { name: 'Arial', size: 9 };
 
-      // Row colors: Income = Light Emerald, Expense = Light Rose, Refund = Light Amber
+      // Row colors: Income = Light Emerald/Green, Expense = Light Rose, Refund = Soft Red
       let bgArgb = 'FFFFFFFF';
       let typeFontColor = 'FF1E293B';
 
       if (typeValue === 'INCOME') {
-        bgArgb = 'FFECFDF5'; // Light Emerald
-        typeFontColor = 'FF047857'; // Dark Emerald
+        bgArgb = 'FFECFDF5'; // Light Emerald Green
+        typeFontColor = 'FF047857'; // Dark Emerald Green
       } else if (typeValue === 'EXPENSE') {
         bgArgb = 'FFFFF1F2'; // Light Rose
         typeFontColor = 'FFBE123C'; // Dark Rose
       } else if (typeValue === 'REFUND') {
-        bgArgb = 'FFFFFBEB'; // Light Amber
-        typeFontColor = 'FFB45309'; // Dark Amber
+        bgArgb = 'FFFEF2F2'; // Light Red
+        typeFontColor = 'FFDC2626'; // Bright Red
       }
 
       row.eachCell({ includeEmpty: true }, (cell) => {
@@ -176,9 +176,14 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
       typeCell.font = { name: 'Arial', size: 9, bold: true, color: { argb: typeFontColor } };
       typeCell.alignment = { vertical: 'middle', horizontal: 'center' };
 
-      // Total cell styling
+      // Total cell styling - Green for Income, Red for Refund
       const totalCell = row.getCell('Total');
-      totalCell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF09090B' } };
+      totalCell.font = { 
+        name: 'Arial', 
+        size: 9, 
+        bold: true, 
+        color: { argb: typeValue === 'INCOME' ? 'FF047857' : typeValue === 'REFUND' ? 'FFDC2626' : 'FF09090B' } 
+      };
 
       // Due cell highlighting
       const dueCell = row.getCell('Due');
@@ -271,15 +276,15 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
     });
 
     const metrics = [
-      { name: 'Total Income (+)', val: `$${totalInc.toFixed(2)}`, color: 'FF047857' },
-      { name: '  • Total Cash Income', val: `$${totalCashIncome.toFixed(2)}`, color: 'FF065F46' },
-      { name: '  • Total Card Income', val: `$${totalCardIncome.toFixed(2)}`, color: 'FF065F46' },
-      { name: 'Total Expenses (-)', val: `$${totalExp.toFixed(2)}`, color: 'FFBE123C' },
-      { name: 'Total Refunds (-)', val: `$${totalRef.toFixed(2)}`, color: 'FFB45309' },
-      { name: '  • Total Cash Refund', val: `$${totalCashRefund.toFixed(2)}`, color: 'FF92400E' },
-      { name: '  • Total Card Refund', val: `$${totalCardRefund.toFixed(2)}`, color: 'FF92400E' },
-      { name: 'Net Profit / Cash Flow', val: `$${netProfit.toFixed(2)}`, color: 'FF1E293B' },
-      { name: 'Total Outstanding Balance Due', val: `$${totalDue.toFixed(2)}`, color: 'FFDC2626' }
+      { name: 'Total Income (+)', val: `$${totalInc.toFixed(2)}`, bg: 'FFECFDF5', color: 'FF047857' },
+      { name: '  • Total Cash Income', val: `$${totalCashIncome.toFixed(2)}`, bg: 'FFECFDF5', color: 'FF065F46' },
+      { name: '  • Total Card Income', val: `$${totalCardIncome.toFixed(2)}`, bg: 'FFECFDF5', color: 'FF065F46' },
+      { name: 'Total Expenses (-)', val: `$${totalExp.toFixed(2)}`, bg: 'FFFFF1F2', color: 'FFBE123C' },
+      { name: 'Total Refunds (-)', val: `$${totalRef.toFixed(2)}`, bg: 'FFFEF2F2', color: 'FFDC2626' },
+      { name: '  • Total Cash Refund', val: `$${totalCashRefund.toFixed(2)}`, bg: 'FFFEF2F2', color: 'FF92400E' },
+      { name: '  • Total Card Refund', val: `$${totalCardRefund.toFixed(2)}`, bg: 'FFFEF2F2', color: 'FF92400E' },
+      { name: 'Net Profit / Cash Flow', val: `$${netProfit.toFixed(2)}`, bg: 'FFE2E8F0', color: 'FF0F172A' },
+      { name: 'Total Outstanding Balance Due', val: `$${totalDue.toFixed(2)}`, bg: 'FFFEF2F2', color: 'FFDC2626' }
     ];
 
     metrics.forEach(m => {
@@ -287,14 +292,14 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
         Transaction_ID: m.name,
         Date_Time: m.val
       });
-      mRow.height = 20;
+      mRow.height = 22;
       mRow.getCell('Transaction_ID').font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF334155' } };
-      mRow.getCell('Date_Time').font = { name: 'Arial', size: 9, bold: true, color: { argb: m.color } };
+      mRow.getCell('Date_Time').font = { name: 'Arial', size: 9.5, bold: true, color: { argb: m.color } };
       mRow.eachCell({ includeEmpty: true }, cell => {
         cell.fill = {
           type: 'pattern',
           pattern: 'solid',
-          fgColor: { argb: 'FFF8FAFC' }
+          fgColor: { argb: m.bg }
         };
         cell.border = {
           bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
@@ -369,9 +374,41 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
       startY: 75,
       head: [['Txn ID', 'Date & Time', 'Type', 'Category / Details', 'Status', 'Method', 'Total', 'Due', 'Customer', 'Note']],
       body: tableData,
-      theme: 'striped',
+      theme: 'grid',
       headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
       styles: { fontSize: 8, cellPadding: 5 },
+      didParseCell: (data) => {
+        if (data.section === 'body') {
+          const rawRow = dataToExport[data.row.index];
+          if (rawRow) {
+            if (rawRow.type === 'income') {
+              data.cell.styles.fillColor = [236, 253, 245]; // Soft Emerald Green
+              if (data.column.index === 2 || data.column.index === 6) { // Type & Total
+                data.cell.styles.textColor = [4, 120, 87]; // Emerald Green
+                data.cell.styles.fontStyle = 'bold';
+              }
+            } else if (rawRow.type === 'refund') {
+              data.cell.styles.fillColor = [254, 242, 242]; // Soft Red
+              if (data.column.index === 2 || data.column.index === 6) { // Type & Total
+                data.cell.styles.textColor = [220, 38, 38]; // Bright Red
+                data.cell.styles.fontStyle = 'bold';
+              }
+            } else if (rawRow.type === 'expense') {
+              data.cell.styles.fillColor = [255, 241, 242]; // Soft Rose
+              if (data.column.index === 2 || data.column.index === 6) { // Type & Total
+                data.cell.styles.textColor = [190, 18, 60]; // Dark Rose
+                data.cell.styles.fontStyle = 'bold';
+              }
+            }
+
+            // Highlight due column in red if > 0
+            if (data.column.index === 7 && rawRow.due > 0) {
+              data.cell.styles.textColor = [220, 38, 38];
+              data.cell.styles.fontStyle = 'bold';
+            }
+          }
+        }
+      },
       didDrawPage: (data) => {
         // Footer
         doc.setFontSize(8);
@@ -427,24 +464,45 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
     autoTable(doc, {
       startY: summaryStartY,
       margin: { left: 40 },
-      tableWidth: 440,
+      tableWidth: 460,
       head: [['Financial Metric Overview', 'Total Amount ($)']],
       body: [
         ['Total Income (+)', formatCurrency(totalIncome)],
-        ['  - Total Cash Income', formatCurrency(pdfCashIncome)],
-        ['  - Total Card Income', formatCurrency(pdfCardIncome)],
+        ['  • Total Cash Income', formatCurrency(pdfCashIncome)],
+        ['  • Total Card Income', formatCurrency(pdfCardIncome)],
         ['Total Expenses (-)', formatCurrency(totalExpense)],
         ['Total Refunds (-)', formatCurrency(totalRefund)],
-        ['  - Total Cash Refund', formatCurrency(pdfCashRefund)],
-        ['  - Total Card Refund', formatCurrency(pdfCardRefund)],
+        ['  • Total Cash Refund', formatCurrency(pdfCashRefund)],
+        ['  • Total Card Refund', formatCurrency(pdfCardRefund)],
         ['Net Profit / Cash Flow', formatCurrency(netProfit)],
         ['Total Outstanding Balance Due', formatCurrency(totalDue)]
       ],
       theme: 'grid',
       headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
       styles: { fontSize: 8.5, cellPadding: 5, fontStyle: 'bold' },
+      didParseCell: (data) => {
+        if (data.section === 'body') {
+          const rowIndex = data.row.index;
+          if (rowIndex === 0 || rowIndex === 1 || rowIndex === 2) {
+            data.cell.styles.fillColor = [236, 253, 245]; // Emerald light
+            data.cell.styles.textColor = [4, 120, 87];
+          } else if (rowIndex === 3) {
+            data.cell.styles.fillColor = [255, 241, 242]; // Rose light
+            data.cell.styles.textColor = [190, 18, 60];
+          } else if (rowIndex === 4 || rowIndex === 5 || rowIndex === 6) {
+            data.cell.styles.fillColor = [254, 242, 242]; // Red light
+            data.cell.styles.textColor = [220, 38, 38];
+          } else if (rowIndex === 7) {
+            data.cell.styles.fillColor = [226, 232, 240]; // Slate-200
+            data.cell.styles.textColor = [15, 23, 42];
+          } else if (rowIndex === 8) {
+            data.cell.styles.fillColor = [254, 242, 242];
+            data.cell.styles.textColor = [220, 38, 38];
+          }
+        }
+      },
       columnStyles: {
-        0: { cellWidth: 260, fillColor: [248, 250, 252] },
+        0: { cellWidth: 280 },
         1: { cellWidth: 180, halign: 'right' }
       }
     });

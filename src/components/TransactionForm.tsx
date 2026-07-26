@@ -43,6 +43,7 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
   const [phoneNumber, setPhoneNumber] = useState('');
   const [discount, setDiscount] = useState('0');
   const [advance, setAdvance] = useState('0');
+  const [isManualAdvance, setIsManualAdvance] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
   const [workStatus, setWorkStatus] = useState<WorkStatus>('Not Started');
   const [isSplit, setIsSplit] = useState(false);
@@ -125,6 +126,7 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
 
   useEffect(() => {
     if (editingTransaction) {
+      setIsManualAdvance(true);
       setType(editingTransaction.type);
       setItems(editingTransaction.items || []);
       setDiscount(editingTransaction.discount.toString());
@@ -149,6 +151,8 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
       setShowCustomer(!!editingTransaction.customer);
       // Reset to first step on edit
       setCurrentStep('Basics');
+    } else {
+      setIsManualAdvance(false);
     }
   }, [editingTransaction]);
 
@@ -175,6 +179,13 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
   const taxVal = parseFloat(((sVal - dVal) * taxMultiplier).toFixed(2));
   const totalAmount = parseFloat((sVal - dVal + taxVal).toFixed(2));
   const dueAmount = parseFloat((totalAmount - aVal).toFixed(2));
+
+  // Auto-detect and sync Amount Paid to Total Amount unless user manually overrides
+  useEffect(() => {
+    if (!isManualAdvance && !editingTransaction) {
+      setAdvance(totalAmount > 0 ? totalAmount.toFixed(2) : '0');
+    }
+  }, [totalAmount, isManualAdvance, editingTransaction]);
 
   // Change Calculation
   const cashToConsider = isSplit ? sCashVal : (paymentMethod === 'CASH' ? aVal : 0);
@@ -268,6 +279,7 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
     setItems([]);
     setDiscount('0');
     setAdvance('0');
+    setIsManualAdvance(false);
     setSplitCash('0');
     setSplitCard('0');
     setSplitZelle('0');
@@ -755,20 +767,70 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
 
                 <div className="flex flex-col gap-4">
                   <div className="flex-1 p-6 bg-emerald-50 rounded-2xl border border-emerald-100 flex flex-col justify-center">
-                    <label className="text-[10px] font-black text-emerald-700/60 mb-2 uppercase tracking-widest">Amount Paid</label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-[10px] font-black text-emerald-700/60 uppercase tracking-widest">Amount Paid</label>
+                      {isManualAdvance && !isSplit ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsManualAdvance(false);
+                            setAdvance(totalAmount.toFixed(2));
+                          }}
+                          className="text-[9px] font-black text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-2.5 py-1 rounded-full transition-all cursor-pointer border border-emerald-200"
+                          title="Reset to automatically match full total amount"
+                        >
+                          Auto Full Paid
+                        </button>
+                      ) : (
+                        <span className="text-[8px] font-extrabold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full uppercase">
+                          Auto-Detected
+                        </span>
+                      )}
+                    </div>
                     <div className="relative">
                       <DollarSign size={20} className="absolute left-0 top-1/2 -translate-y-1/2 text-emerald-500" />
                       <input 
                         type="number" 
+                        step="0.01"
                         value={isSplit ? aVal.toFixed(2) : advance} 
-                        onChange={e => setAdvance(e.target.value)} 
+                        onChange={e => {
+                          setIsManualAdvance(true);
+                          setAdvance(e.target.value);
+                        }} 
                         disabled={isSplit}
                         className="w-full bg-transparent text-4xl font-black text-emerald-700 outline-none pl-6 font-mono tracking-tighter" 
                       />
                     </div>
                   </div>
                   <div className="flex-1 p-6 bg-rose-50 rounded-2xl border border-rose-100 flex flex-col justify-center">
-                    <label className="text-[10px] font-black text-rose-700/60 mb-2 uppercase tracking-widest">Balance Due</label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-[10px] font-black text-rose-700/60 uppercase tracking-widest">Balance Due</label>
+                      {!isSplit && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[8px] font-bold uppercase text-rose-600/70">Quick Due:</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsManualAdvance(false);
+                              setAdvance(totalAmount.toFixed(2));
+                            }}
+                            className="text-[8px] font-black px-2 py-0.5 rounded bg-white text-rose-700 border border-rose-200 hover:bg-rose-100 transition-all cursor-pointer shadow-2xs"
+                          >
+                            $0 Due
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsManualAdvance(true);
+                              setAdvance((totalAmount / 2).toFixed(2));
+                            }}
+                            className="text-[8px] font-black px-2 py-0.5 rounded bg-white text-rose-700 border border-rose-200 hover:bg-rose-100 transition-all cursor-pointer shadow-2xs"
+                          >
+                            50% Deposit
+                          </button>
+                        </div>
+                      )}
+                    </div>
                     <p className="text-4xl font-black text-rose-700 font-mono tracking-tighter">${dueAmount.toFixed(2)}</p>
                   </div>
                 </div>
