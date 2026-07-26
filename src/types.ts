@@ -108,6 +108,9 @@ export interface UserProfile {
 export interface WorkHour {
   id: string;
   date: string;
+  employeeName?: string;
+  startTime?: string;
+  endTime?: string;
   hours: number;
   note: string;
 }

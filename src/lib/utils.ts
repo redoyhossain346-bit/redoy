@@ -111,3 +111,16 @@ export function formatTxDateTime(dateStr?: string, createdAtStr?: string): strin
   return format(new Date(), 'yyyy-MM-dd hh:mm a');
 }
 
+export function format12Hour(time24?: string): string {
+  if (!time24) return '';
+  const [hStr, mStr] = time24.split(':');
+  let h = parseInt(hStr, 10);
+  const m = parseInt(mStr, 10);
+  if (isNaN(h) || isNaN(m)) return time24;
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12;
+  if (h === 0) h = 12;
+  const mFormatted = m < 10 ? `0${m}` : `${m}`;
+  return `${h}:${mFormatted} ${ampm}`;
+}
+

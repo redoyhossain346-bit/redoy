@@ -713,6 +713,7 @@ export default function App() {
                 onDelete={handleDeleteTransaction} 
                 onEdit={handleEditInit}
                 onExportAudit={handleExportAudit}
+                workHours={workHours}
               />
             </div>
           </div>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { FileSpreadsheet, FileText, Trash2, Utensils, Car, Home, Zap, Heart, ShoppingBag, Box, DollarSign, Wallet, Smartphone, Layers, Wrench, Hammer, Unlock, Store, Gamepad, Banknote, CreditCard, User, Phone, Mail, ShieldCheck, Fingerprint, Hash, Tablet, Sparkles, ToyBrick, Package, Watch, Cpu, ChevronDown } from 'lucide-react';
-import { Transaction } from '../types';
-import { formatCurrency, cn, formatTransactionId, formatTxDateTime } from '../lib/utils';
+import { Transaction, WorkHour } from '../types';
+import { formatCurrency, cn, formatTransactionId, formatTxDateTime, format12Hour } from '../lib/utils';
 import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
@@ -13,6 +13,7 @@ interface TransactionListProps {
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
   onExportAudit?: () => void;
+  workHours?: WorkHour[];
 }
 
 const CATEGORY_ICONS: Record<string, any> = {
@@ -44,7 +45,7 @@ const CATEGORY_ICONS: Record<string, any> = {
   Others: <Wallet size={16} />,
 };
 
-export default function TransactionList({ transactions, onDelete, onEdit, onExportAudit }: TransactionListProps) {
+export default function TransactionList({ transactions, onDelete, onEdit, onExportAudit, workHours = [] }: TransactionListProps) {
   const [showExportOptions, setShowExportOptions] = useState(false);
   const [exportFilters, setExportFilters] = useState({
     startDate: '',
@@ -61,6 +62,15 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
       return matchesType && matchesDate;
     });
   }, [transactions, exportFilters]);
+
+  const filteredWorkHoursForExport = useMemo(() => {
+    return (workHours || []).filter(h => {
+      const hDate = new Date(h.date);
+      const matchesDate = (!exportFilters.startDate || hDate >= startOfDay(new Date(exportFilters.startDate))) &&
+                          (!exportFilters.endDate || hDate <= endOfDay(new Date(exportFilters.endDate)));
+      return matchesDate;
+    });
+  }, [workHours, exportFilters]);
 
   const exportToExcel = async () => {
     const dataToExport = filteredForExport;
@@ -309,7 +319,177 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
       });
     });
 
-    // Auto-adjust column widths
+    // STAFF SHIFT LOGS SECTION IN MAIN SHEET
+    if (filteredWorkHoursForExport.length > 0) {
+      worksheet.addRow({});
+
+      const shiftHeaderRow = worksheet.addRow({
+        Transaction_ID: 'STAFF SHIFT LOGS & HOURS',
+        Date_Time: 'STAFF MEMBER NAME',
+        Type: 'SHIFT DATE',
+        Category: 'START TIME',
+        Status: 'END TIME',
+        Items: 'TIME-WISE SHIFT RANGE',
+        Method: 'HOURS LOGGED',
+        Cash: 'ACTIVITY / ROLE NOTE'
+      });
+      shiftHeaderRow.height = 24;
+      shiftHeaderRow.eachCell({ includeEmpty: true }, (cell) => {
+        cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFD97706' } // Amber-600
+        };
+        cell.alignment = { vertical: 'middle' };
+      });
+
+      let totalShiftHours = 0;
+      filteredWorkHoursForExport.forEach(h => {
+        totalShiftHours += h.hours;
+        const rangeStr = (h.startTime && h.endTime) 
+          ? `${format12Hour(h.startTime)} to ${format12Hour(h.endTime)}`
+          : 'Full Day / Manual';
+
+        const sRow = worksheet.addRow({
+          Transaction_ID: 'SHIFT-LOG',
+          Date_Time: h.employeeName || 'Staff Member',
+          Type: h.date,
+          Category: format12Hour(h.startTime) || '10:00 AM',
+          Status: format12Hour(h.endTime) || '08:00 PM',
+          Items: rangeStr,
+          Method: `${h.hours.toFixed(1)} HRS`,
+          Cash: h.note || '-'
+        });
+        sRow.height = 20;
+        sRow.getCell('Date_Time').font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFB45309' } };
+        sRow.getCell('Items').font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF1E293B' } };
+        sRow.getCell('Method').font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF047857' } };
+        sRow.eachCell({ includeEmpty: true }, cell => {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFFDF8F6' }
+          };
+          cell.border = {
+            bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+          };
+        });
+      });
+
+      const shiftSummaryRow = worksheet.addRow({
+        Transaction_ID: 'TOTAL SHIFT HOURS',
+        Date_Time: `${filteredWorkHoursForExport.length} Shift Logs`,
+        Method: `${totalShiftHours.toFixed(1)} HRS`
+      });
+      shiftSummaryRow.height = 22;
+      shiftSummaryRow.eachCell({ includeEmpty: true }, (cell) => {
+        cell.font = { name: 'Arial', size: 9.5, bold: true, color: { argb: 'FF92400E' } };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFEF3C7' }
+        };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFD97706' } },
+          bottom: { style: 'medium', color: { argb: 'FFD97706' } }
+        };
+      });
+    }
+
+    // DEDICATED WORKSHEET FOR SHIFT LOGS
+    const shiftWorksheet = workbook.addWorksheet('Shift Logs (Staff)');
+    const shiftWsData = filteredWorkHoursForExport.map(h => ({
+      Staff_Member_Name: h.employeeName || 'Staff Member',
+      Shift_Date: h.date,
+      Start_Time: format12Hour(h.startTime) || '10:00 AM',
+      End_Time: format12Hour(h.endTime) || '08:00 PM',
+      Time_Wise_Shift_Range: (h.startTime && h.endTime) ? `${format12Hour(h.startTime)} to ${format12Hour(h.endTime)}` : 'Full Day',
+      Total_Hours_Worked: `${h.hours.toFixed(1)} HRS`,
+      Activity_Role_Note: h.note || ''
+    }));
+
+    if (shiftWsData.length > 0) {
+      shiftWorksheet.columns = Object.keys(shiftWsData[0]).map(key => ({
+        header: key.replace(/_/g, ' '),
+        key: key,
+        width: 22
+      }));
+      shiftWorksheet.addRows(shiftWsData);
+
+      const shiftHeader = shiftWorksheet.getRow(1);
+      shiftHeader.height = 28;
+      shiftHeader.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+      shiftHeader.eachCell((cell) => {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFB45309' } // Amber-700
+        };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        cell.border = {
+          bottom: { style: 'medium', color: { argb: 'FF78350F' } }
+        };
+      });
+
+      shiftWorksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return;
+        row.height = 22;
+        row.font = { name: 'Arial', size: 9 };
+        row.eachCell({ includeEmpty: true }, (cell) => {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFFDF8F6' }
+          };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+          };
+          cell.alignment = { vertical: 'middle' };
+        });
+
+        const staffCell = row.getCell('Staff_Member_Name');
+        staffCell.font = { name: 'Arial', size: 9.5, bold: true, color: { argb: 'FF92400E' } };
+
+        const hoursCell = row.getCell('Total_Hours_Worked');
+        hoursCell.font = { name: 'Arial', size: 9.5, bold: true, color: { argb: 'FF047857' } };
+      });
+
+      const totalShiftHrs = filteredWorkHoursForExport.reduce((sum, h) => sum + h.hours, 0);
+      const shiftTotRow = shiftWorksheet.addRow({
+        Staff_Member_Name: 'TOTAL SHIFT HOURS LOGGED',
+        Total_Hours_Worked: `${totalShiftHrs.toFixed(1)} HRS`
+      });
+      shiftTotRow.height = 26;
+      shiftTotRow.eachCell({ includeEmpty: true }, (cell) => {
+        cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF78350F' } };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFEF3C7' }
+        };
+        cell.border = {
+          top: { style: 'medium', color: { argb: 'FFB45309' } },
+          bottom: { style: 'double', color: { argb: 'FFB45309' } }
+        };
+      });
+
+      shiftWorksheet.columns.forEach((column) => {
+        let maxLen = column.header ? column.header.length : 12;
+        column.eachCell?.({ includeEmpty: true }, (cell) => {
+          const len = cell.value ? String(cell.value).length : 0;
+          if (len > maxLen) maxLen = len;
+        });
+        column.width = Math.min(Math.max(maxLen + 3, 14), 45);
+      });
+    }
+
+    // Auto-adjust column widths for main sheet
     worksheet.columns.forEach((column) => {
       let maxLen = column.header ? column.header.length : 12;
       column.eachCell?.({ includeEmpty: true }, (cell) => {
@@ -506,6 +686,71 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
         1: { cellWidth: 180, halign: 'right' }
       }
     });
+
+    // STAFF SHIFT LOGS TABLE IN PDF EXPORT
+    if (filteredWorkHoursForExport.length > 0) {
+      const shiftPdfY = (doc as any).lastAutoTable?.finalY || 100;
+      const pdfPageH = doc.internal.pageSize.height;
+
+      const shiftStartPdfY = (shiftPdfY > pdfPageH - 180) ? 40 : shiftPdfY + 20;
+      if (shiftPdfY > pdfPageH - 180) {
+        doc.addPage();
+      }
+
+      const shiftTableData = filteredWorkHoursForExport.map(h => [
+        h.employeeName || 'Staff Member',
+        h.date,
+        (h.startTime && h.endTime) ? `${format12Hour(h.startTime)} to ${format12Hour(h.endTime)}` : 'Full Day',
+        `${h.hours.toFixed(1)} HRS`,
+        h.note || '-'
+      ]);
+
+      const totalPdfShiftHours = filteredWorkHoursForExport.reduce((s, h) => s + h.hours, 0);
+      shiftTableData.push([
+        'TOTAL SHIFT HOURS',
+        `${filteredWorkHoursForExport.length} Logs`,
+        '',
+        `${totalPdfShiftHours.toFixed(1)} HRS`,
+        ''
+      ]);
+
+      autoTable(doc, {
+        startY: shiftStartPdfY,
+        margin: { left: 40 },
+        tableWidth: 600,
+        head: [['Staff Member Name', 'Shift Date', 'Time-Wise Range', 'Hours Logged', 'Activity / Role Note']],
+        body: shiftTableData,
+        theme: 'grid',
+        headStyles: { fillColor: [217, 119, 6], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
+        styles: { fontSize: 8.5, cellPadding: 5 },
+        didParseCell: (data) => {
+          if (data.section === 'body') {
+            const isTotalRow = data.row.index === shiftTableData.length - 1;
+            if (isTotalRow) {
+              data.cell.styles.fillColor = [254, 243, 199];
+              data.cell.styles.textColor = [120, 53, 15];
+              data.cell.styles.fontStyle = 'bold';
+            } else {
+              data.cell.styles.fillColor = [253, 248, 246];
+              if (data.column.index === 0) {
+                data.cell.styles.textColor = [180, 83, 9];
+                data.cell.styles.fontStyle = 'bold';
+              } else if (data.column.index === 3) {
+                data.cell.styles.textColor = [4, 120, 87];
+                data.cell.styles.fontStyle = 'bold';
+              }
+            }
+          }
+        },
+        columnStyles: {
+          0: { cellWidth: 140 },
+          1: { cellWidth: 90 },
+          2: { cellWidth: 150 },
+          3: { cellWidth: 80 },
+          4: { cellWidth: 140 }
+        }
+      });
+    }
 
     doc.save(`Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };
