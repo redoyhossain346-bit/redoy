@@ -1,6 +1,8 @@
 {
   "name": "All Cellular and Repair Tempe",
   "description": "Secure management portal for All Cellular & Repair Tempe. Track repairs, sales, inventory, and audit logs with AI-powered insights.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": [
+    "microphone"
+  ],
   "majorCapabilities": []
 }

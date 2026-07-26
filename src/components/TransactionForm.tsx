@@ -1,5 +1,5 @@
 import { useState, FormEvent, useEffect, useMemo } from 'react';
-import { User, Phone, PlusCircle, CreditCard, Banknote, DollarSign, Zap, Plus, X, Edit3, ArrowRight, ArrowLeft, CheckCircle2, ShoppingBag, UserCircle, Receipt } from 'lucide-react';
+import { User, Phone, PlusCircle, CreditCard, Banknote, DollarSign, Zap, Plus, X, Edit3, ArrowRight, ArrowLeft, CheckCircle2, ShoppingBag, UserCircle, Receipt, Mic, MicOff } from 'lucide-react';
 import { Category, Transaction, TransactionType, PaymentMethod, TransactionItem, WorkStatus } from '../types';
 import { cn, toDatetimeLocalString } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -59,6 +59,69 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
   const [showCustomer, setShowCustomer] = useState(false);
   const [note, setNote] = useState('');
   const [date, setDate] = useState(toDatetimeLocalString());
+  const [isListening, setIsListening] = useState(false);
+
+  const toggleListening = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert("Voice recognition is not supported in this browser. Please use Chrome, Edge, or Safari.");
+      return;
+    }
+
+    if (isListening) {
+      if ((window as any).activeRecognition) {
+        (window as any).activeRecognition.stop();
+      }
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      (window as any).activeRecognition = recognition;
+
+      const baseNote = note;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        let currentTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          currentTranscript += event.results[i][0].transcript;
+        }
+        
+        const newNote = baseNote 
+          ? `${baseNote} ${currentTranscript.trim()}`
+          : currentTranscript.trim();
+          
+        setNote(newNote);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error', event.error);
+        setIsListening(false);
+        if (event.error === 'not-allowed') {
+          alert('Microphone access was blocked. Please allow microphone permissions in your browser address bar.');
+        }
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch (err) {
+      console.error('Failed to start speech recognition', err);
+      setIsListening(false);
+    }
+  };
 
   useEffect(() => {
     if (editingTransaction) {
@@ -376,14 +439,50 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
               </div>
 
               <div>
-                <label className="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-widest pl-1">Internal Log / Note</label>
-                <textarea
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Additional details about this transaction..."
-                  rows={4}
-                  className="glass-input w-full p-6 text-sm font-black bg-white border-slate-200 resize-none h-32"
-                />
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[10px] font-black text-slate-400 block uppercase tracking-widest pl-1">Internal Log / Note</label>
+                  <button
+                    type="button"
+                    onClick={toggleListening}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-black transition-all border shadow-sm cursor-pointer",
+                      isListening
+                        ? "bg-rose-600 text-white border-rose-700 animate-pulse ring-2 ring-rose-200"
+                        : "bg-slate-100 text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 border-slate-200"
+                    )}
+                    title={isListening ? "Stop Voice Input" : "Click to speak and auto-type into Internal Log"}
+                  >
+                    {isListening ? (
+                      <>
+                        <MicOff size={14} className="animate-spin text-white" />
+                        <span>Listening... (Click to Stop)</span>
+                      </>
+                    ) : (
+                      <>
+                        <Mic size={14} className="text-indigo-600" />
+                        <span>Voice Recognition</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <div className="relative">
+                  <textarea
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder={isListening ? "Listening... Speak now and text will appear here automatically..." : "Additional details about this transaction..."}
+                    rows={4}
+                    className={cn(
+                      "glass-input w-full p-6 text-sm font-black bg-white border-slate-200 resize-none h-32 transition-all",
+                      isListening && "border-rose-400 ring-2 ring-rose-100 bg-rose-50/20"
+                    )}
+                  />
+                  {isListening && (
+                    <div className="absolute bottom-3 right-3 flex items-center gap-2 bg-rose-600 text-white text-[10px] font-black px-3 py-1 rounded-full animate-bounce shadow-md">
+                      <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+                      Live Mic Active
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
