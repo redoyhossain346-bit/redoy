@@ -194,6 +194,35 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
     const netProfit = totalInc - totalExp - totalRef;
     const totalDue = dataToExport.reduce((sum, t) => sum + (t.due || 0), 0);
 
+    let totalCashIncome = 0;
+    let totalCardIncome = 0;
+    let totalCashRefund = 0;
+    let totalCardRefund = 0;
+
+    dataToExport.forEach(t => {
+      let cashVal = 0;
+      let cardVal = 0;
+
+      if (t.paymentSplit) {
+        cashVal = Number(t.paymentSplit.cash || 0);
+        cardVal = Number(t.paymentSplit.card || 0);
+      } else {
+        if (t.paymentMethod === 'CASH') {
+          cashVal = Number(t.amount || 0);
+        } else if (t.paymentMethod === 'CARD') {
+          cardVal = Number(t.amount || 0);
+        }
+      }
+
+      if (t.type === 'income') {
+        totalCashIncome += cashVal;
+        totalCardIncome += cardVal;
+      } else if (t.type === 'refund') {
+        totalCashRefund += cashVal;
+        totalCardRefund += cardVal;
+      }
+    });
+
     // Empty separator row
     worksheet.addRow({});
 
@@ -201,7 +230,7 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
     const summaryRow = worksheet.addRow({
       Transaction_ID: 'TOTAL FINANCIAL SUMMARY',
       Type: `INC: $${totalInc.toFixed(2)}`,
-      Category: `EXP: $${totalExp.toFixed(2)}`,
+      Category: `CASH: $${totalCashIncome.toFixed(2)} | CARD: $${totalCardIncome.toFixed(2)}`,
       Status: `REF: $${totalRef.toFixed(2)}`,
       Method: `NET: $${netProfit.toFixed(2)}`,
       Total: dataToExport.reduce((sum, t) => sum + t.amount, 0),
@@ -220,6 +249,59 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
         bottom: { style: 'double', color: { argb: 'FF0F172A' } }
       };
       cell.alignment = { vertical: 'middle' };
+    });
+
+    // Empty separator row
+    worksheet.addRow({});
+
+    // Financial Metric Overview Header Row
+    const overviewHeaderRow = worksheet.addRow({
+      Transaction_ID: 'FINANCIAL METRIC OVERVIEW',
+      Date_Time: 'TOTAL AMOUNT ($)'
+    });
+    overviewHeaderRow.height = 24;
+    overviewHeaderRow.eachCell({ includeEmpty: true }, (cell) => {
+      cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF0F172A' } // Slate-900
+      };
+      cell.alignment = { vertical: 'middle' };
+    });
+
+    const metrics = [
+      { name: 'Total Income (+)', val: `$${totalInc.toFixed(2)}`, color: 'FF047857' },
+      { name: '  • Total Cash Income', val: `$${totalCashIncome.toFixed(2)}`, color: 'FF065F46' },
+      { name: '  • Total Card Income', val: `$${totalCardIncome.toFixed(2)}`, color: 'FF065F46' },
+      { name: 'Total Expenses (-)', val: `$${totalExp.toFixed(2)}`, color: 'FFBE123C' },
+      { name: 'Total Refunds (-)', val: `$${totalRef.toFixed(2)}`, color: 'FFB45309' },
+      { name: '  • Total Cash Refund', val: `$${totalCashRefund.toFixed(2)}`, color: 'FF92400E' },
+      { name: '  • Total Card Refund', val: `$${totalCardRefund.toFixed(2)}`, color: 'FF92400E' },
+      { name: 'Net Profit / Cash Flow', val: `$${netProfit.toFixed(2)}`, color: 'FF1E293B' },
+      { name: 'Total Outstanding Balance Due', val: `$${totalDue.toFixed(2)}`, color: 'FFDC2626' }
+    ];
+
+    metrics.forEach(m => {
+      const mRow = worksheet.addRow({
+        Transaction_ID: m.name,
+        Date_Time: m.val
+      });
+      mRow.height = 20;
+      mRow.getCell('Transaction_ID').font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF334155' } };
+      mRow.getCell('Date_Time').font = { name: 'Arial', size: 9, bold: true, color: { argb: m.color } };
+      mRow.eachCell({ includeEmpty: true }, cell => {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFF8FAFC' }
+        };
+        cell.border = {
+          bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+        };
+      });
     });
 
     // Auto-adjust column widths
@@ -306,33 +388,63 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
     const netProfit = totalIncome - totalExpense - totalRefund;
     const totalDue = dataToExport.reduce((sum, t) => sum + (t.due || 0), 0);
 
+    let pdfCashIncome = 0;
+    let pdfCardIncome = 0;
+    let pdfCashRefund = 0;
+    let pdfCardRefund = 0;
+
+    dataToExport.forEach(t => {
+      let cashVal = 0;
+      let cardVal = 0;
+
+      if (t.paymentSplit) {
+        cashVal = Number(t.paymentSplit.cash || 0);
+        cardVal = Number(t.paymentSplit.card || 0);
+      } else {
+        if (t.paymentMethod === 'CASH') cashVal = Number(t.amount || 0);
+        else if (t.paymentMethod === 'CARD') cardVal = Number(t.amount || 0);
+      }
+
+      if (t.type === 'income') {
+        pdfCashIncome += cashVal;
+        pdfCardIncome += cardVal;
+      } else if (t.type === 'refund') {
+        pdfCashRefund += cashVal;
+        pdfCardRefund += cardVal;
+      }
+    });
+
     const finalY = (doc as any).lastAutoTable?.finalY || 100;
     const pageHeight = doc.internal.pageSize.height;
 
     // If remaining space on page is small, add a new page for summary
-    if (finalY > pageHeight - 140) {
+    if (finalY > pageHeight - 220) {
       doc.addPage();
     }
 
-    const summaryStartY = (finalY > pageHeight - 140) ? 40 : finalY + 20;
+    const summaryStartY = (finalY > pageHeight - 220) ? 40 : finalY + 20;
 
     autoTable(doc, {
       startY: summaryStartY,
       margin: { left: 40 },
-      tableWidth: 420,
+      tableWidth: 440,
       head: [['Financial Metric Overview', 'Total Amount ($)']],
       body: [
         ['Total Income (+)', formatCurrency(totalIncome)],
+        ['  - Total Cash Income', formatCurrency(pdfCashIncome)],
+        ['  - Total Card Income', formatCurrency(pdfCardIncome)],
         ['Total Expenses (-)', formatCurrency(totalExpense)],
         ['Total Refunds (-)', formatCurrency(totalRefund)],
+        ['  - Total Cash Refund', formatCurrency(pdfCashRefund)],
+        ['  - Total Card Refund', formatCurrency(pdfCardRefund)],
         ['Net Profit / Cash Flow', formatCurrency(netProfit)],
         ['Total Outstanding Balance Due', formatCurrency(totalDue)]
       ],
       theme: 'grid',
-      headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
+      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
       styles: { fontSize: 8.5, cellPadding: 5, fontStyle: 'bold' },
       columnStyles: {
-        0: { cellWidth: 240, fillColor: [248, 250, 252] },
+        0: { cellWidth: 260, fillColor: [248, 250, 252] },
         1: { cellWidth: 180, halign: 'right' }
       }
     });
