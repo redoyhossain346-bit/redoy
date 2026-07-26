@@ -2,13 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { Clock, Plus, Trash2, Calendar as CalendarIcon, User, Search, UserCheck, Briefcase } from 'lucide-react';
 import { WorkHour } from '../types';
 import { format } from 'date-fns';
-import { cn, uuid, format12Hour } from '../lib/utils';
+import { cn, uuid, format12Hour, formatDateSafe } from '../lib/utils';
 
 interface WorkHoursTrackerProps {
   workHours: WorkHour[];
   onUpdate: (hours: WorkHour[]) => void;
   onRequestPasscode?: (onConfirm: () => void, title?: string, description?: string) => void;
 }
+
+const getTodayLocalString = (): string => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 // Calculate duration in hours between 24h start & end times
 export function calculateShiftHours(start24?: string, end24?: string): number {
@@ -30,7 +38,7 @@ export function calculateShiftHours(start24?: string, end24?: string): number {
 }
 
 export default function WorkHoursTracker({ workHours, onUpdate, onRequestPasscode }: WorkHoursTrackerProps) {
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(getTodayLocalString());
   const [employeeName, setEmployeeName] = useState('');
   const [startTime, setStartTime] = useState('10:00');
   const [endTime, setEndTime] = useState('20:00');
@@ -421,7 +429,7 @@ export default function WorkHoursTracker({ workHours, onUpdate, onRequestPasscod
                       <div className="flex items-center gap-2">
                         <CalendarIcon size={14} className="text-slate-400" />
                         <span className="text-xs font-bold text-slate-700">
-                          {format(new Date(entry.date), 'dd MMM yyyy')}
+                          {formatDateSafe(entry.date, 'dd MMM yyyy')}
                         </span>
                       </div>
                     </td>

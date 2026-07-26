@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { FileSpreadsheet, FileText, Trash2, Utensils, Car, Home, Zap, Heart, ShoppingBag, Box, DollarSign, Wallet, Smartphone, Layers, Wrench, Hammer, Unlock, Store, Gamepad, Banknote, CreditCard, User, Phone, Mail, ShieldCheck, Fingerprint, Hash, Tablet, Sparkles, ToyBrick, Package, Watch, Cpu, ChevronDown } from 'lucide-react';
 import { Transaction, WorkHour } from '../types';
-import { formatCurrency, cn, formatTransactionId, formatTxDateTime, format12Hour } from '../lib/utils';
+import { formatCurrency, cn, formatTransactionId, formatTxDateTime, format12Hour, formatDateSafe } from '../lib/utils';
 import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
@@ -65,9 +65,12 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
 
   const filteredWorkHoursForExport = useMemo(() => {
     return (workHours || []).filter(h => {
-      const hDate = new Date(h.date);
-      const matchesDate = (!exportFilters.startDate || hDate >= startOfDay(new Date(exportFilters.startDate))) &&
-                          (!exportFilters.endDate || hDate <= endOfDay(new Date(exportFilters.endDate)));
+      const hDate = new Date(h.date.length === 10 ? `${h.date}T00:00:00` : h.date);
+      const sDate = exportFilters.startDate ? new Date(`${exportFilters.startDate}T00:00:00`) : null;
+      const eDate = exportFilters.endDate ? new Date(`${exportFilters.endDate}T23:59:59`) : null;
+
+      const matchesDate = (!sDate || hDate >= startOfDay(sDate)) &&
+                          (!eDate || hDate <= endOfDay(eDate));
       return matchesDate;
     });
   }, [workHours, exportFilters]);
@@ -699,7 +702,7 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
 
       const shiftTableData = filteredWorkHoursForExport.map(h => [
         h.employeeName || 'Staff Member',
-        h.date,
+        formatDateSafe(h.date, 'dd MMM yyyy'),
         (h.startTime && h.endTime) ? `${format12Hour(h.startTime)} to ${format12Hour(h.endTime)}` : 'Full Day',
         `${h.hours.toFixed(1)} HRS`,
         h.note || '-'

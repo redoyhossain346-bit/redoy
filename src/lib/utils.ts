@@ -111,6 +111,21 @@ export function formatTxDateTime(dateStr?: string, createdAtStr?: string): strin
   return format(new Date(), 'yyyy-MM-dd hh:mm a');
 }
 
+export function formatDateSafe(dateStr?: string, formatPattern: string = 'dd MMM yyyy'): string {
+  if (!dateStr) return '';
+  // If it's a 10-character YYYY-MM-DD date string, parse with local time T00:00:00 to prevent UTC timezone backward shift
+  if (dateStr.length === 10 && dateStr.includes('-')) {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+      const localDate = new Date(year, month - 1, day);
+      return format(localDate, formatPattern);
+    }
+  }
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return format(d, formatPattern);
+}
+
 export function format12Hour(time24?: string): string {
   if (!time24) return '';
   const [hStr, mStr] = time24.split(':');
