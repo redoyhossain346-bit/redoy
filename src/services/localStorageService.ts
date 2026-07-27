@@ -107,6 +107,11 @@ export const localStorageService = {
     return Promise.resolve();
   },
 
+  setAllWorkHours: (hours: WorkHour[]) => {
+    saveToLocal(STORAGE_KEYS.WORK_HOURS, hours);
+    return Promise.resolve();
+  },
+
   deleteWorkHour: (id: string) => {
     const current = getFromLocal<WorkHour[]>(STORAGE_KEYS.WORK_HOURS, []);
     const filtered = current.filter(h => h.id !== id);

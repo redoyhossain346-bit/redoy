@@ -162,9 +162,7 @@ export default function App() {
 
   const handleUpdateWorkHours = async (newHours: WorkHour[]) => {
     setWorkHours(newHours);
-    if (newHours.length > 0) {
-      await localStorageService.saveWorkHour(newHours[0]);
-    }
+    await localStorageService.setAllWorkHours(newHours);
   };
 
   const handleUpdateTaxRate = async (newRate: number) => {
@@ -221,6 +219,23 @@ export default function App() {
 
     return result;
   }, [transactions, selectedMonth, selectedYear, startDate, endDate, filterType, paymentMethodFilter, statusFilter]);
+
+  const filteredWorkHours = useMemo(() => {
+    let result = workHours;
+
+    if (filterType === 'month') {
+      result = result.filter(h => h.date.startsWith(selectedMonth));
+    } else if (filterType === 'year') {
+      result = result.filter(h => h.date.startsWith(selectedYear));
+    } else if (filterType === 'range') {
+      result = result.filter(h => {
+        const dateStr = h.date ? h.date.slice(0, 10) : '';
+        return (!startDate || dateStr >= startDate) && (!endDate || dateStr <= endDate);
+      });
+    }
+
+    return result;
+  }, [workHours, selectedMonth, selectedYear, startDate, endDate, filterType]);
 
   const summary: BudgetSummary = useMemo(() => {
     const totalIncome = filteredTransactions
@@ -514,8 +529,8 @@ export default function App() {
           className="mt-8 min-h-[70vh] [perspective:1200px]"
         >
           <DailyStatement 
-            transactions={transactions}
-            workHours={workHours}
+            transactions={filteredTransactions}
+            workHours={filteredWorkHours}
           />
         </motion.div>
       ) : (
@@ -727,7 +742,7 @@ export default function App() {
                 onDelete={handleDeleteTransaction} 
                 onEdit={handleEditInit}
                 onExportAudit={handleExportAudit}
-                workHours={workHours}
+                workHours={filteredWorkHours}
               />
             </div>
           </div>

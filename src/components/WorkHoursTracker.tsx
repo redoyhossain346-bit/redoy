@@ -47,6 +47,8 @@ export default function WorkHoursTracker({ workHours, onUpdate, onRequestPasscod
   const [note, setNote] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEmployeeFilter, setSelectedEmployeeFilter] = useState('ALL');
+  const [startDateFilter, setStartDateFilter] = useState('');
+  const [endDateFilter, setEndDateFilter] = useState('');
 
   // Extract unique employee names for quick picks
   const recentEmployees = Array.from(
@@ -108,8 +110,28 @@ export default function WorkHoursTracker({ workHours, onUpdate, onRequestPasscod
     }
   };
 
+  const handleDeleteAll = () => {
+    if (workHours.length === 0) return;
+    const doDeleteAll = () => onUpdate([]);
+    if (onRequestPasscode) {
+      onRequestPasscode(
+        doDeleteAll,
+        'Delete All Shift Logs',
+        'Enter User ID & Password to permanently delete ALL historical shift logs'
+      );
+    } else {
+      if (confirm("Are you sure you want to permanently delete ALL historical shift logs? This action cannot be undone.")) {
+        doDeleteAll();
+      }
+    }
+  };
+
   // Filtering
   const filteredWorkHours = workHours.filter(item => {
+    const itemDate = item.date ? item.date.slice(0, 10) : '';
+    const matchesStartDate = !startDateFilter || itemDate >= startDateFilter;
+    const matchesEndDate = !endDateFilter || itemDate <= endDateFilter;
+
     const matchesSearch = 
       (item.employeeName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.note || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -119,11 +141,14 @@ export default function WorkHoursTracker({ workHours, onUpdate, onRequestPasscod
       selectedEmployeeFilter === 'ALL' || 
       (item.employeeName || 'Staff Member') === selectedEmployeeFilter;
 
-    return matchesSearch && matchesEmployee;
+    return matchesStartDate && matchesEndDate && matchesSearch && matchesEmployee;
   });
 
-  const totalHours = workHours.reduce((acc, curr) => acc + curr.hours, 0);
-  const totalEmployees = recentEmployees.length;
+  const totalHours = filteredWorkHours.reduce((acc, curr) => acc + curr.hours, 0);
+  const filteredEmployees = Array.from(
+    new Set(filteredWorkHours.map(h => h.employeeName?.trim()).filter(Boolean) as string[])
+  );
+  const totalEmployees = filteredEmployees.length;
 
   return (
     <div className="space-y-8">
@@ -161,7 +186,7 @@ export default function WorkHoursTracker({ workHours, onUpdate, onRequestPasscod
               <Briefcase size={16} className="text-emerald-600" />
               <h3 className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Logged Shifts</h3>
             </div>
-            <p className="text-3xl font-black text-slate-900 font-mono tracking-tight">{workHours.length} <span className="text-xs text-emerald-700 font-bold uppercase">Logs</span></p>
+            <p className="text-3xl font-black text-slate-900 font-mono tracking-tight">{filteredWorkHours.length} <span className="text-xs text-emerald-700 font-bold uppercase">Logs</span></p>
           </div>
           <div className="p-3 bg-emerald-600 text-white rounded-xl shadow-md">
             <Briefcase size={22} />
@@ -366,12 +391,40 @@ export default function WorkHoursTracker({ workHours, onUpdate, onRequestPasscod
               />
             </div>
 
+            {/* Date Range Filters */}
+            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
+              <CalendarIcon size={14} className="text-amber-500" />
+              <input
+                type="date"
+                value={startDateFilter}
+                onChange={(e) => setStartDateFilter(e.target.value)}
+                className="h-6 text-xs font-bold text-slate-700 bg-transparent outline-none cursor-pointer"
+                title="Start Date Filter"
+              />
+              <span className="text-slate-300 text-xs font-bold">-</span>
+              <input
+                type="date"
+                value={endDateFilter}
+                onChange={(e) => setEndDateFilter(e.target.value)}
+                className="h-6 text-xs font-bold text-slate-700 bg-transparent outline-none cursor-pointer"
+                title="End Date Filter"
+              />
+              {(startDateFilter || endDateFilter) && (
+                <button
+                  onClick={() => { setStartDateFilter(''); setEndDateFilter(''); }}
+                  className="text-[10px] font-black text-rose-600 hover:bg-rose-50 px-1.5 py-0.5 rounded transition-all cursor-pointer"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
             {/* Filter by Employee */}
             {recentEmployees.length > 0 && (
               <select
                 value={selectedEmployeeFilter}
                 onChange={(e) => setSelectedEmployeeFilter(e.target.value)}
-                className="h-9 px-3 text-xs font-bold bg-white border border-slate-200 rounded-xl outline-none focus:border-amber-500 text-slate-700"
+                className="h-9 px-3 text-xs font-bold bg-white border border-slate-200 rounded-xl outline-none focus:border-amber-500 text-slate-700 cursor-pointer"
               >
                 <option value="ALL">All Staff Members ({workHours.length})</option>
                 {recentEmployees.map(emp => (
@@ -383,6 +436,18 @@ export default function WorkHoursTracker({ workHours, onUpdate, onRequestPasscod
             <span className="text-[10px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-xl uppercase tracking-wider">
               {filteredWorkHours.length} Records
             </span>
+
+            {workHours.length > 0 && (
+              <button
+                type="button"
+                onClick={handleDeleteAll}
+                className="h-9 px-3 text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                title="Delete all historical shift logs permanently"
+              >
+                <Trash2 size={13} />
+                <span>Delete All Shift History</span>
+              </button>
+            )}
           </div>
         </div>
 
