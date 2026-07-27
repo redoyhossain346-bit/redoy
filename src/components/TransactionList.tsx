@@ -1079,9 +1079,11 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
                             )}
                           </div>
                         </div>
-                        {(item.model || item.imei || item.storage || item.color || item.warranty || item.carrier || item.phoneNumber) && (
+                        {(item.brand || item.model || item.quality || item.imei || item.storage || item.color || item.warranty || item.carrier || item.phoneNumber) && (
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[8px] font-black text-slate-400 uppercase tracking-tighter">
-                            {item.model && <div className="truncate">Model: <span className="text-amber-600">{item.model}</span></div>}
+                            {item.brand && <div className="truncate">Brand: <span className="text-slate-800">{item.brand}</span></div>}
+                            {item.model && <div className="truncate">Model: <span className="text-amber-600 font-bold">{item.model}</span></div>}
+                            {item.quality && <div className="truncate">Quality: <span className="text-amber-700 bg-amber-50 px-1 rounded font-bold">{item.quality}</span></div>}
                             {item.imei && <div className="truncate">IMEI: <span className="text-amber-600">{item.imei}</span></div>}
                             {item.storage && <div>GB: <span className="text-amber-600">{item.storage}</span></div>}
                             {item.color && <div>Color: <span className="text-amber-600">{item.color}</span></div>}

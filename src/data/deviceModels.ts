@@ -1,0 +1,136 @@
+export interface DeviceBrandModels {
+  brand: string;
+  models: string[];
+}
+
+export const DEVICE_BRANDS: DeviceBrandModels[] = [
+  {
+    brand: 'iPhone',
+    models: [
+      'iPhone 16 Pro Max',
+      'iPhone 16 Pro',
+      'iPhone 16 Plus',
+      'iPhone 16',
+      'iPhone 15 Pro Max',
+      'iPhone 15 Pro',
+      'iPhone 15 Plus',
+      'iPhone 15',
+      'iPhone 14 Pro Max',
+      'iPhone 14 Pro',
+      'iPhone 14 Plus',
+      'iPhone 14',
+      'iPhone 13 Pro Max',
+      'iPhone 13 Pro',
+      'iPhone 13 mini',
+      'iPhone 13',
+      'iPhone 12 Pro Max',
+      'iPhone 12 Pro',
+      'iPhone 12 mini',
+      'iPhone 12',
+      'iPhone 11 Pro Max',
+      'iPhone 11 Pro',
+      'iPhone 11',
+      'iPhone XS Max',
+      'iPhone XS',
+      'iPhone XR',
+      'iPhone X',
+      'iPhone SE (3rd Gen)',
+      'iPhone SE (2nd Gen)',
+      'iPhone 8 Plus',
+      'iPhone 8',
+      'iPhone 7 Plus',
+      'iPhone 7',
+      'iPhone 6s Plus',
+      'iPhone 6s'
+    ]
+  },
+  {
+    brand: 'Samsung',
+    models: [
+      'Galaxy S24 Ultra',
+      'Galaxy S24+',
+      'Galaxy S24',
+      'Galaxy S23 Ultra',
+      'Galaxy S23+',
+      'Galaxy S23',
+      'Galaxy S23 FE',
+      'Galaxy S22 Ultra',
+      'Galaxy S22+',
+      'Galaxy S22',
+      'Galaxy S21 Ultra',
+      'Galaxy S21+',
+      'Galaxy S21',
+      'Galaxy S21 FE',
+      'Galaxy S20 Ultra',
+      'Galaxy S20+',
+      'Galaxy S20',
+      'Galaxy Note 20 Ultra',
+      'Galaxy Note 20',
+      'Galaxy Note 10+',
+      'Galaxy Note 10',
+      'Galaxy Z Fold 6',
+      'Galaxy Z Fold 5',
+      'Galaxy Z Fold 4',
+      'Galaxy Z Flip 6',
+      'Galaxy Z Flip 5',
+      'Galaxy Z Flip 4',
+      'Galaxy A55 5G',
+      'Galaxy A54 5G',
+      'Galaxy A53 5G',
+      'Galaxy A35',
+      'Galaxy A25',
+      'Galaxy A15 5G',
+      'Galaxy A14 5G',
+      'Galaxy A13',
+      'Galaxy A12',
+      'Galaxy A05s',
+      'Galaxy A04s'
+    ]
+  },
+  {
+    brand: 'Pixel',
+    models: [
+      'Pixel 9 Pro XL',
+      'Pixel 9 Pro',
+      'Pixel 9',
+      'Pixel 9 Fold',
+      'Pixel 8 Pro',
+      'Pixel 8',
+      'Pixel 8a',
+      'Pixel 7 Pro',
+      'Pixel 7',
+      'Pixel 7a',
+      'Pixel 6 Pro',
+      'Pixel 6',
+      'Pixel 6a',
+      'Pixel 5',
+      'Pixel 5a',
+      'Pixel 4a 5G',
+      'Pixel 4 XL',
+      'Pixel 4'
+    ]
+  },
+  {
+    brand: 'Motorola',
+    models: [
+      'Moto Razr 50 Ultra / Razr+',
+      'Moto Razr (2024)',
+      'Moto Edge 50 Ultra',
+      'Moto Edge 50 Pro',
+      'Moto Edge 50 Fusion',
+      'Moto Edge 40 Pro',
+      'Moto Edge 40',
+      'Moto G Power 5G (2024)',
+      'Moto G Stylus 5G (2024)',
+      'Moto G 5G (2024)',
+      'Moto G Play (2024)',
+      'Moto G Power (2023)',
+      'Moto G Stylus (2023)',
+      'Moto G Pure',
+      'Moto G Fast',
+      'Moto E13'
+    ]
+  }
+];
+
+export const QUALITY_OPTIONS = ['AQ7', 'XO7', 'ORIGINAL'] as const;

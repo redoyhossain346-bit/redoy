@@ -39,7 +39,9 @@ export interface TransactionItem {
   amount: number;
   cost?: number;
   quantity: number;
+  brand?: string;
   model?: string;
+  quality?: string; // 'AQ7' | 'XO7' | 'ORIGINAL' or custom
   imei?: string;
   storage?: string;
   color?: string;

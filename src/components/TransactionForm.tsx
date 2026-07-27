@@ -1,8 +1,9 @@
 import { useState, FormEvent, useEffect, useMemo } from 'react';
-import { User, Phone, PlusCircle, CreditCard, Banknote, DollarSign, Zap, Plus, X, Edit3, ArrowRight, ArrowLeft, CheckCircle2, ShoppingBag, UserCircle, Receipt, Mic, MicOff } from 'lucide-react';
+import { User, Phone, PlusCircle, CreditCard, Banknote, DollarSign, Zap, Plus, X, Edit3, ArrowRight, ArrowLeft, CheckCircle2, ShoppingBag, UserCircle, Receipt, Mic, MicOff, Smartphone } from 'lucide-react';
 import { Category, Transaction, TransactionType, PaymentMethod, TransactionItem, WorkStatus } from '../types';
 import { cn, toDatetimeLocalString } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { DEVICE_BRANDS, QUALITY_OPTIONS } from '../data/deviceModels';
 
 interface TransactionFormProps {
   onAdd: (transaction: Omit<Transaction, 'id'>) => void;
@@ -31,12 +32,19 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
   const [currentStep, setCurrentStep] = useState<Step>('Basics');
   const [type, setType] = useState<TransactionType>('income');
   const [items, setItems] = useState<TransactionItem[]>([]);
-  const [itemCategory, setItemCategory] = useState<Category>('Labor');
+  const [itemCategory, setItemCategory] = useState<Category>('Screen replacement');
   const [itemCost, setItemCost] = useState('');
   const [itemAmount, setItemAmount] = useState('');
   const [itemQuantity, setItemQuantity] = useState('1');
+  const [deviceBrand, setDeviceBrand] = useState<string>('iPhone');
   const [deviceModel, setDeviceModel] = useState('');
+  const [deviceQuality, setDeviceQuality] = useState<string>('AQ7');
   const [deviceImei, setDeviceImei] = useState('');
+
+  const currentBrandModels = useMemo(() => {
+    const found = DEVICE_BRANDS.find(b => b.brand.toLowerCase() === deviceBrand.toLowerCase());
+    return found ? found.models : [];
+  }, [deviceBrand]);
   const [deviceStorage, setDeviceStorage] = useState('');
   const [deviceColor, setDeviceColor] = useState('');
   const [deviceWarranty, setDeviceWarranty] = useState('');
@@ -203,15 +211,22 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
     
     const isDeviceSell = itemCategory === 'Phone sell' || itemCategory === 'Tablet Sell';
     const isCarrierSell = itemCategory === 'Carrier sell';
-    
+    const isRepairOrPart = [
+      'Screen replacement', 'Back glass', 'Battery', 'Other fix', 'Labor',
+      'Unlocking', 'Phone sell', 'Tablet Sell', 'Tempered Glass',
+      'Camera Protector', 'Parts Sell', 'Accessories'
+    ].includes(itemCategory);
+
     setItems([...items, {
       id: Math.random().toString(36).substr(2, 9),
       category: itemCategory,
       amount: amt,
       cost: (!isNaN(cost) && cost >= 0) ? cost : undefined,
       quantity: qty,
+      brand: isRepairOrPart && deviceBrand ? deviceBrand : undefined,
+      model: isRepairOrPart && deviceModel ? deviceModel : undefined,
+      quality: isRepairOrPart && deviceQuality ? deviceQuality : undefined,
       ...(isDeviceSell ? {
-        model: deviceModel,
         imei: deviceImei,
         storage: deviceStorage,
         color: deviceColor,
@@ -226,13 +241,11 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
     setItemAmount('');
     setItemCost('');
     setItemQuantity('1');
-    if (isDeviceSell) {
-      setDeviceModel('');
-      setDeviceImei('');
-      setDeviceStorage('');
-      setDeviceColor('');
-      setDeviceWarranty('');
-    }
+    setDeviceModel('');
+    setDeviceImei('');
+    setDeviceStorage('');
+    setDeviceColor('');
+    setDeviceWarranty('');
     if (isCarrierSell) {
       setCarrier('');
       setPhoneNumber('');
@@ -580,13 +593,132 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
                   </button>
                 </div>
 
+                {/* Device Brand, Model, and Quality Grade Picker */}
+                <div className="bg-white p-4 rounded-xl border border-slate-200/90 space-y-3.5 shadow-2xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <label className="text-[11px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <Smartphone size={15} className="text-amber-500" />
+                      <span>Device Brand & Model Details</span>
+                    </label>
+                    <span className="text-[10px] font-bold text-slate-400">Model & Quality Options (AQ7, XO7, ORIGINAL)</span>
+                  </div>
+
+                  {/* Brand Tabs */}
+                  <div className="space-y-1">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Select Brand:</span>
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                      {DEVICE_BRANDS.map(b => (
+                        <button
+                          key={b.brand}
+                          type="button"
+                          onClick={() => setDeviceBrand(b.brand)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1 whitespace-nowrap cursor-pointer border",
+                            deviceBrand === b.brand
+                              ? "bg-amber-500 text-white border-amber-600 shadow-sm"
+                              : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                          )}
+                        >
+                          <span>{b.brand}</span>
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setDeviceBrand('Other')}
+                        className={cn(
+                          "px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1 whitespace-nowrap cursor-pointer border",
+                          deviceBrand === 'Other'
+                            ? "bg-amber-500 text-white border-amber-600 shadow-sm"
+                            : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                        )}
+                      >
+                        <span>Other</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Model Number & Quality Grade Inputs */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-500 block uppercase tracking-wider mb-1">
+                        Model Number / Name
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          list="quick-models-list"
+                          value={deviceModel}
+                          onChange={(e) => setDeviceModel(e.target.value)}
+                          placeholder={`Type or select ${deviceBrand} model...`}
+                          className="glass-input h-11 w-full px-3 text-xs font-black bg-white border-slate-200 focus:border-amber-500 rounded-xl"
+                        />
+                        <datalist id="quick-models-list">
+                          {currentBrandModels.map(m => (
+                            <option key={m} value={m} />
+                          ))}
+                        </datalist>
+                      </div>
+                    </div>
+
+                    {/* Quality Grade: AQ7, XO7, ORIGINAL */}
+                    <div>
+                      <label className="text-[10px] font-black text-slate-500 block uppercase tracking-wider mb-1 flex items-center justify-between">
+                        <span>Quality / Grade</span>
+                        <span className="text-amber-600 font-black">{deviceQuality}</span>
+                      </label>
+                      <div className="grid grid-cols-3 gap-1.5 h-11">
+                        {QUALITY_OPTIONS.map(q => (
+                          <button
+                            key={q}
+                            type="button"
+                            onClick={() => setDeviceQuality(q)}
+                            className={cn(
+                              "h-full rounded-xl text-xs font-black transition-all flex items-center justify-center border cursor-pointer uppercase tracking-wider",
+                              deviceQuality === q
+                                ? "bg-amber-500 text-white border-amber-600 shadow-md shadow-amber-500/20 scale-[1.02]"
+                                : "bg-slate-50 text-slate-700 border-slate-200 hover:border-amber-300 hover:bg-amber-50/50"
+                            )}
+                          >
+                            {q}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quick-Click Model Chips */}
+                  {currentBrandModels.length > 0 && (
+                    <div className="space-y-1 pt-1 border-t border-slate-100">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
+                        Popular {deviceBrand} Models (Click to select):
+                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap max-h-24 overflow-y-auto p-1.5 bg-slate-50 border border-slate-100 rounded-xl">
+                        {currentBrandModels.map(m => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => setDeviceModel(m)}
+                            className={cn(
+                              "px-2.5 py-1 rounded-lg text-[10px] font-black transition-all border cursor-pointer",
+                              deviceModel === m
+                                ? "bg-amber-500 text-white border-amber-600 shadow-xs"
+                                : "bg-white text-slate-700 border-slate-200 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200"
+                            )}
+                          >
+                            {m}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {(itemCategory === 'Phone sell' || itemCategory === 'Tablet Sell') && (
                   <div className="grid grid-cols-2 gap-2 mt-2 animate-in fade-in slide-in-from-top-1">
-                    <input type="text" value={deviceModel} onChange={e => setDeviceModel(e.target.value)} placeholder="Model" className="glass-input text-[10px] py-1.5" />
                     <input type="text" value={deviceImei} onChange={e => setDeviceImei(e.target.value)} placeholder="IMEI" className="glass-input text-[10px] py-1.5" />
                     <input type="text" value={deviceStorage} onChange={e => setDeviceStorage(e.target.value)} placeholder="Storage" className="glass-input text-[10px] py-1.5" />
                     <input type="text" value={deviceColor} onChange={e => setDeviceColor(e.target.value)} placeholder="Color" className="glass-input text-[10px] py-1.5" />
-                    <input type="text" value={deviceWarranty} onChange={e => setDeviceWarranty(e.target.value)} placeholder="Warranty" className="glass-input text-[10px] py-1.5 col-span-2" />
+                    <input type="text" value={deviceWarranty} onChange={e => setDeviceWarranty(e.target.value)} placeholder="Warranty" className="glass-input text-[10px] py-1.5" />
                   </div>
                 )}
 
@@ -625,7 +757,18 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
                           </div>
                           <div>
                             <div className="text-sm font-black text-slate-800 uppercase tracking-tight">{item.category}</div>
-                            {item.model && <div className="text-[8px] font-black text-indigo-500 uppercase">{item.model} • {item.imei}</div>}
+                            {(item.brand || item.model || item.quality || item.imei) && (
+                              <div className="text-[9px] font-black uppercase flex items-center gap-1.5 flex-wrap mt-0.5">
+                                {item.brand && <span className="text-slate-600 font-bold">{item.brand}</span>}
+                                {item.model && <span className="text-amber-600 font-extrabold">{item.model}</span>}
+                                {item.quality && (
+                                  <span className="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-md font-black border border-amber-200">
+                                    Grade: {item.quality}
+                                  </span>
+                                )}
+                                {item.imei && <span className="text-slate-400">IMEI: {item.imei}</span>}
+                              </div>
+                            )}
                             <div className="flex items-center gap-2 mt-0.5 text-[10px] font-black">
                               {item.cost !== undefined && item.cost > 0 && (
                                 <span className="text-rose-500/80">Cost: ${item.cost.toFixed(2)} ea</span>
