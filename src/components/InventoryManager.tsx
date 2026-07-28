@@ -55,7 +55,7 @@ const POPULAR_MODELS = [
 ];
 
 const POPULAR_COLORS = [
-  'Titanium Gold', 'Dark Teal Titanium', 'Jade Green', 'Titanium Emerald', 'Celestial Navy', 'Liquid Platinum',
+  'Cosmic Orange', 'Deep Blue', 'Silver', 'Titanium Gold', 'Dark Teal Titanium', 'Jade Green', 'Titanium Emerald', 'Celestial Navy', 'Liquid Platinum',
   'Natural Titanium', 'Desert Titanium', 'Black Titanium', 'White Titanium',
   'Space Black', 'Silver', 'Gold', 'Deep Purple', 'Sierra Blue', 'Alpine Green',
   'Phantom Black', 'Titanium Gray', 'Titanium Yellow', 'Titanium Violet',

@@ -1,19 +1,19 @@
 export interface PhoneColorVariant {
   name: string;
   hex: string;
-  colorFamily: 'Titanium / Neutral' | 'Pink / Red' | 'Blue' | 'Green' | 'Black / Dark' | 'White / Silver' | 'Gold / Bronze' | 'Purple / Violet';
+  colorFamily: 'Titanium / Neutral' | 'Pink / Red' | 'Blue' | 'Green' | 'Black / Dark' | 'White / Silver' | 'Gold / Bronze' | 'Purple / Violet' | 'Orange / Yellow';
   isHeroFinish?: boolean;
 }
 
 export interface PhoneModelCatalogItem {
   id: string;
-  brand: 'Apple' | 'Google' | 'Samsung' | 'Motorola';
+  brand: string;
   model: string;
   releaseYear: number;
-  msrp: number;
-  chipset: string;
-  display: string;
-  camera: string;
+  msrp?: number;
+  chipset?: string;
+  display?: string;
+  camera?: string;
   officialColors: PhoneColorVariant[];
 }
 
@@ -26,7 +26,8 @@ export const COLOR_FAMILIES = [
   'Black / Dark',
   'White / Silver',
   'Gold / Bronze',
-  'Purple / Violet'
+  'Purple / Violet',
+  'Orange / Yellow'
 ] as const;
 
 export const PHONE_COLORS_CATALOG: PhoneModelCatalogItem[] = [
@@ -43,10 +44,9 @@ export const PHONE_COLORS_CATALOG: PhoneModelCatalogItem[] = [
     display: '6.9" Super Retina XDR OLED (120Hz ProMotion + Anti-Reflective)',
     camera: '48MP Main + 48MP Ultra Wide + 48MP Periscope Telephoto',
     officialColors: [
-      { name: 'Titanium Gold', hex: '#D4AF37', colorFamily: 'Gold / Bronze', isHeroFinish: true },
-      { name: 'Dark Teal Titanium', hex: '#1F4E5B', colorFamily: 'Green' },
-      { name: 'Natural Titanium', hex: '#B8B5B0', colorFamily: 'Titanium / Neutral' },
-      { name: 'Space Black Titanium', hex: '#2B2B2D', colorFamily: 'Black / Dark' }
+      { name: 'Cosmic Orange', hex: '#E65100', colorFamily: 'Orange / Yellow', isHeroFinish: true },
+      { name: 'Deep Blue', hex: '#0F1B2A', colorFamily: 'Blue' },
+      { name: 'Silver', hex: '#E0E0E2', colorFamily: 'White / Silver' }
     ]
   },
   {
@@ -59,10 +59,9 @@ export const PHONE_COLORS_CATALOG: PhoneModelCatalogItem[] = [
     display: '6.3" Super Retina XDR OLED (120Hz ProMotion + Anti-Reflective)',
     camera: '48MP Main + 48MP Ultra Wide + 48MP Telephoto',
     officialColors: [
-      { name: 'Titanium Gold', hex: '#D4AF37', colorFamily: 'Gold / Bronze', isHeroFinish: true },
-      { name: 'Dark Teal Titanium', hex: '#1F4E5B', colorFamily: 'Green' },
-      { name: 'Natural Titanium', hex: '#B8B5B0', colorFamily: 'Titanium / Neutral' },
-      { name: 'Space Black Titanium', hex: '#2B2B2D', colorFamily: 'Black / Dark' }
+      { name: 'Cosmic Orange', hex: '#E65100', colorFamily: 'Orange / Yellow', isHeroFinish: true },
+      { name: 'Deep Blue', hex: '#0F1B2A', colorFamily: 'Blue' },
+      { name: 'Silver', hex: '#E0E0E2', colorFamily: 'White / Silver' }
     ]
   },
   {
@@ -542,13 +541,16 @@ export const PHONE_COLORS_CATALOG: PhoneModelCatalogItem[] = [
     releaseYear: 2025,
     msrp: 1299,
     chipset: 'Snapdragon 8 Elite for Galaxy',
-    display: '6.9" Dynamic AMOLED 2X (120Hz)',
+    display: '6.9" Dynamic AMOLED 2X (120Hz, Anti-Reflective Corning Gorilla Armor 2)',
     camera: '200MP Main + 50MP Ultra Wide + 50MP 5x Telephoto + 10MP 3x Telephoto',
     officialColors: [
-      { name: 'Titanium Black', hex: '#2B2B2C', colorFamily: 'Black / Dark', isHeroFinish: true },
-      { name: 'Titanium Silver', hex: '#C2C4C8', colorFamily: 'White / Silver' },
+      { name: 'Titanium Silver Shadow', hex: '#C2C4C8', colorFamily: 'Titanium / Neutral', isHeroFinish: true },
+      { name: 'Titanium Black', hex: '#222325', colorFamily: 'Black / Dark' },
+      { name: 'Titanium Gray', hex: '#7C7C7E', colorFamily: 'Titanium / Neutral' },
       { name: 'Titanium Blue', hex: '#6C839B', colorFamily: 'Blue' },
-      { name: 'Titanium Gray', hex: '#7C7C7E', colorFamily: 'Titanium / Neutral' }
+      { name: 'Titanium Jade Green', hex: '#88A392', colorFamily: 'Green' },
+      { name: 'Titanium Pink Gold', hex: '#E8C4C4', colorFamily: 'Pink / Red' },
+      { name: 'Titanium White', hex: '#F4F4F6', colorFamily: 'White / Silver' }
     ]
   },
   {
@@ -561,10 +563,13 @@ export const PHONE_COLORS_CATALOG: PhoneModelCatalogItem[] = [
     display: '6.7" Dynamic AMOLED 2X (120Hz)',
     camera: '50MP Main + 12MP Ultra Wide + 10MP 3x Telephoto',
     officialColors: [
+      { name: 'Moonrock Gray', hex: '#92969C', colorFamily: 'Titanium / Neutral', isHeroFinish: true },
+      { name: 'Sparkling Blue', hex: '#5A7B9A', colorFamily: 'Blue' },
+      { name: 'Sparkling Green', hex: '#86A598', colorFamily: 'Green' },
+      { name: 'Silver Shadow', hex: '#D1D3D8', colorFamily: 'White / Silver' },
       { name: 'Midnight Black', hex: '#222325', colorFamily: 'Black / Dark' },
-      { name: 'Icy Blue', hex: '#B2C6DB', colorFamily: 'Blue', isHeroFinish: true },
-      { name: 'Silver Shadow', hex: '#C0C3C8', colorFamily: 'White / Silver' },
-      { name: 'Mint', hex: '#C3E4D6', colorFamily: 'Green' }
+      { name: 'Coral Red', hex: '#D9534F', colorFamily: 'Pink / Red' },
+      { name: 'Pink Gold', hex: '#E8C4C4', colorFamily: 'Pink / Red' }
     ]
   },
   {
@@ -577,10 +582,13 @@ export const PHONE_COLORS_CATALOG: PhoneModelCatalogItem[] = [
     display: '6.2" Dynamic AMOLED 2X (120Hz)',
     camera: '50MP Main + 12MP Ultra Wide + 10MP 3x Telephoto',
     officialColors: [
-      { name: 'Icy Blue', hex: '#B2C6DB', colorFamily: 'Blue', isHeroFinish: true },
-      { name: 'Mint Green', hex: '#C3E4D6', colorFamily: 'Green' },
-      { name: 'Silver Shadow', hex: '#C0C3C8', colorFamily: 'White / Silver' },
-      { name: 'Midnight Black', hex: '#222325', colorFamily: 'Black / Dark' }
+      { name: 'Moonrock Gray', hex: '#92969C', colorFamily: 'Titanium / Neutral', isHeroFinish: true },
+      { name: 'Sparkling Blue', hex: '#5A7B9A', colorFamily: 'Blue' },
+      { name: 'Sparkling Green', hex: '#86A598', colorFamily: 'Green' },
+      { name: 'Silver Shadow', hex: '#D1D3D8', colorFamily: 'White / Silver' },
+      { name: 'Midnight Black', hex: '#222325', colorFamily: 'Black / Dark' },
+      { name: 'Coral Red', hex: '#D9534F', colorFamily: 'Pink / Red' },
+      { name: 'Pink Gold', hex: '#E8C4C4', colorFamily: 'Pink / Red' }
     ]
   },
   {
