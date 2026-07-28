@@ -4,6 +4,7 @@ import { InventoryItem } from '../types';
 import { PHONE_COLORS_CATALOG, PhoneModelCatalogItem, PhoneColorVariant } from '../data/phoneColorsCatalog';
 import { DEVICE_BRANDS } from '../data/deviceModels';
 import { uuid } from '../lib/utils';
+import { getMobileSentrixPartPricing } from '../data/mobileSentrixPrices';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface AddPhoneAndPartsModalProps {
@@ -281,6 +282,18 @@ export default function AddPhoneAndPartsModal({
       if (selectedModelObj.msrp) {
         setPhoneCost(selectedModelObj.msrp);
       }
+
+      // Auto-populate MobileSentrix wholesale prices for selected device model
+      setSpareParts(prev => prev.map(part => {
+        const pType = part.id as 'screen' | 'battery' | 'port' | 'backglass' | 'camera' | 'housing' | 'board';
+        const ms = getMobileSentrixPartPricing(selectedModelObj.model, pType, selectedModelObj.brand);
+        return {
+          ...part,
+          unitCost: ms.wholesaleCost,
+          quality: (ms.qualityGrade.includes('OLED') || ms.qualityGrade.includes('Service Pack') ? 'Original / OLED' : 
+                   ms.qualityGrade.includes('Ampsentrix') || ms.qualityGrade.includes('OEM') ? 'OEM Original' : 'Aftermarket') as QualityGrade
+        };
+      }));
     }
   }, [selectedCatalogId, isCustomModel, selectedModelObj]);
 
@@ -320,7 +333,7 @@ export default function AddPhoneAndPartsModal({
     const itemsToAdd: InventoryItem[] = [];
 
     if (entryMode === 'auto_batch') {
-      // Automatic model-by-model batch stock entry
+      // Automatic model-by-model batch stock entry using MobileSentrix Wholesale Rates
       Object.entries(batchQuantities).forEach(([modelId, qtyMapVal]) => {
         const qtyMap = qtyMapVal as ModelBatchQty;
         const catalogItem = fullCatalog.find(m => m.id === modelId);
@@ -347,95 +360,101 @@ export default function AddPhoneAndPartsModal({
           });
         }
 
-        // 2. OLED Display Screen
+        // 2. OLED Display Screen (MobileSentrix XO7 / Service Pack)
         if (qtyMap.screen > 0) {
+          const ms = getMobileSentrixPartPricing(model, 'screen', brand);
           itemsToAdd.push({
             id: uuid(),
-            name: `${model} - OLED Display Screen [Original / OLED]`,
+            name: `${model} - ${ms.partName} [${ms.qualityGrade}]`,
             category: categories.find(c => c.toLowerCase().includes('screen') || c.toLowerCase().includes('display')) || 'Screen & Display',
             quantity: qtyMap.screen,
-            price: 85,
+            price: ms.wholesaleCost,
             minStock: 2,
             brand,
             model,
             color: heroColor,
-            serialNumber: `Original / OLED • Auto Batch Stock`
+            serialNumber: `${ms.qualityGrade} • MS SKU: ${ms.msSku}`
           });
         }
 
-        // 3. Battery Replacement
+        // 3. Battery Replacement (Ampsentrix)
         if (qtyMap.battery > 0) {
+          const ms = getMobileSentrixPartPricing(model, 'battery', brand);
           itemsToAdd.push({
             id: uuid(),
-            name: `${model} - Battery Replacement [OEM Original]`,
+            name: `${model} - ${ms.partName} [${ms.qualityGrade}]`,
             category: categories.find(c => c.toLowerCase().includes('battery') || c.toLowerCase().includes('batteries')) || 'Batteries',
             quantity: qtyMap.battery,
-            price: 25,
+            price: ms.wholesaleCost,
             minStock: 2,
             brand,
             model,
-            serialNumber: `OEM Original • Auto Batch Stock`
+            serialNumber: `${ms.qualityGrade} • MS SKU: ${ms.msSku}`
           });
         }
 
-        // 4. Charging Port Flex
+        // 4. Charging Port Flex (MobileSentrix Flex)
         if (qtyMap.port > 0) {
+          const ms = getMobileSentrixPartPricing(model, 'port', brand);
           itemsToAdd.push({
             id: uuid(),
-            name: `${model} - Charging Port Flex [Aftermarket]`,
+            name: `${model} - ${ms.partName} [${ms.qualityGrade}]`,
             category: categories.find(c => c.toLowerCase().includes('flex') || c.toLowerCase().includes('port')) || 'Flex Cables',
             quantity: qtyMap.port,
-            price: 12,
+            price: ms.wholesaleCost,
             minStock: 2,
             brand,
             model,
-            serialNumber: `Aftermarket • Auto Batch Stock`
+            serialNumber: `${ms.qualityGrade} • MS SKU: ${ms.msSku}`
           });
         }
 
         // 5. Back Glass Cover
         if (qtyMap.backglass > 0) {
+          const ms = getMobileSentrixPartPricing(model, 'backglass', brand);
           itemsToAdd.push({
             id: uuid(),
-            name: `${model} - Back Glass Cover [Refurbished]`,
+            name: `${model} - ${ms.partName} [${ms.qualityGrade}]`,
             category: categories.find(c => c.toLowerCase().includes('back glass') || c.toLowerCase().includes('housing')) || 'Back Glass & Housing',
             quantity: qtyMap.backglass,
-            price: 18,
+            price: ms.wholesaleCost,
             minStock: 2,
             brand,
             model,
             color: heroColor,
-            serialNumber: `Refurbished • Auto Batch Stock`
+            serialNumber: `${ms.qualityGrade} • MS SKU: ${ms.msSku}`
           });
         }
 
         // 6. Camera Lens / Module
         if (qtyMap.camera > 0) {
+          const ms = getMobileSentrixPartPricing(model, 'camera', brand);
           itemsToAdd.push({
             id: uuid(),
-            name: `${model} - Camera Lens / Module [OEM Original]`,
+            name: `${model} - ${ms.partName} [${ms.qualityGrade}]`,
             category: categories.find(c => c.toLowerCase().includes('camera')) || 'Cameras',
             quantity: qtyMap.camera,
-            price: 35,
+            price: ms.wholesaleCost,
             minStock: 2,
             brand,
             model,
-            serialNumber: `OEM Original • Auto Batch Stock`
+            serialNumber: `${ms.qualityGrade} • MS SKU: ${ms.msSku}`
           });
         }
 
         // 7. Logic Board Assembly
         if (qtyMap.board > 0) {
+          const ms = getMobileSentrixPartPricing(model, 'board', brand);
           itemsToAdd.push({
             id: uuid(),
-            name: `${model} - Logic Board / Assembly [OEM Genuine]`,
+            name: `${model} - ${ms.partName} [${ms.qualityGrade}]`,
             category: categories.find(c => c.toLowerCase().includes('board') || c.toLowerCase().includes('motherboard')) || 'Motherboards / Logic Boards',
             quantity: qtyMap.board,
-            price: 65,
+            price: ms.wholesaleCost,
             minStock: 1,
             brand,
             model,
-            serialNumber: `OEM Genuine • Auto Batch Stock`
+            serialNumber: `${ms.qualityGrade} • MS SKU: ${ms.msSku}`
           });
         }
       });
@@ -671,119 +690,130 @@ export default function AddPhoneAndPartsModal({
                       </div>
 
                       {/* ITEM QUANTITY INPUTS GRID */}
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5 pt-3.5">
-                        {/* 1. Phone Units */}
-                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
-                          <div>
-                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">📱 Phone Units</span>
-                            <span className="text-[9px] text-slate-400 font-bold">$350 unit cost</span>
-                          </div>
-                          <input
-                            type="number"
-                            min="0"
-                            value={qty.phoneUnits || ''}
-                            onChange={(e) => updateModelBatchQty(item.id, 'phoneUnits', parseInt(e.target.value) || 0)}
-                            placeholder="0"
-                            className="w-12 py-1 px-1.5 text-center font-mono font-black text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
-                          />
-                        </div>
+                      {(() => {
+                        const msScreen = getMobileSentrixPartPricing(item.model, 'screen', item.brand);
+                        const msBatt = getMobileSentrixPartPricing(item.model, 'battery', item.brand);
+                        const msPort = getMobileSentrixPartPricing(item.model, 'port', item.brand);
+                        const msGlass = getMobileSentrixPartPricing(item.model, 'backglass', item.brand);
+                        const msCam = getMobileSentrixPartPricing(item.model, 'camera', item.brand);
+                        const msBoard = getMobileSentrixPartPricing(item.model, 'board', item.brand);
 
-                        {/* 2. Screen Assembly */}
-                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
-                          <div>
-                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">🖥 Screen OLED</span>
-                            <span className="text-[9px] text-slate-400 font-bold">$120 unit cost</span>
-                          </div>
-                          <input
-                            type="number"
-                            min="0"
-                            value={qty.screen || ''}
-                            onChange={(e) => updateModelBatchQty(item.id, 'screen', parseInt(e.target.value) || 0)}
-                            placeholder="0"
-                            className="w-12 py-1 px-1.5 text-center font-mono font-black text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
-                          />
-                        </div>
+                        return (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5 pt-3.5">
+                            {/* 1. Phone Units */}
+                            <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
+                              <div>
+                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">📱 Phone Units</span>
+                                <span className="text-[9px] text-emerald-600 font-black">${item.msrp || 799} msrp</span>
+                              </div>
+                              <input
+                                type="number"
+                                min="0"
+                                value={qty.phoneUnits || ''}
+                                onChange={(e) => updateModelBatchQty(item.id, 'phoneUnits', parseInt(e.target.value) || 0)}
+                                placeholder="0"
+                                className="w-12 py-1 px-1.5 text-center font-mono font-black text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                              />
+                            </div>
 
-                        {/* 3. Battery Replacement */}
-                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
-                          <div>
-                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">🔋 Battery Pack</span>
-                            <span className="text-[9px] text-slate-400 font-bold">$22 unit cost</span>
-                          </div>
-                          <input
-                            type="number"
-                            min="0"
-                            value={qty.battery || ''}
-                            onChange={(e) => updateModelBatchQty(item.id, 'battery', parseInt(e.target.value) || 0)}
-                            placeholder="0"
-                            className="w-12 py-1 px-1.5 text-center font-mono font-black text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
-                          />
-                        </div>
+                            {/* 2. Screen Assembly */}
+                            <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
+                              <div>
+                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">🖥 Screen OLED</span>
+                                <span className="text-[9px] text-indigo-600 font-black">${msScreen.wholesaleCost} MS XO7</span>
+                              </div>
+                              <input
+                                type="number"
+                                min="0"
+                                value={qty.screen || ''}
+                                onChange={(e) => updateModelBatchQty(item.id, 'screen', parseInt(e.target.value) || 0)}
+                                placeholder="0"
+                                className="w-12 py-1 px-1.5 text-center font-mono font-black text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                              />
+                            </div>
 
-                        {/* 4. Charging Port */}
-                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
-                          <div>
-                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">⚡ Charge Port</span>
-                            <span className="text-[9px] text-slate-400 font-bold">$18 unit cost</span>
-                          </div>
-                          <input
-                            type="number"
-                            min="0"
-                            value={qty.port || ''}
-                            onChange={(e) => updateModelBatchQty(item.id, 'port', parseInt(e.target.value) || 0)}
-                            placeholder="0"
-                            className="w-12 py-1 px-1.5 text-center font-mono font-black text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
-                          />
-                        </div>
+                            {/* 3. Battery Replacement */}
+                            <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
+                              <div>
+                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">🔋 Battery Pack</span>
+                                <span className="text-[9px] text-amber-600 font-black">${msBatt.wholesaleCost} Ampsentrix</span>
+                              </div>
+                              <input
+                                type="number"
+                                min="0"
+                                value={qty.battery || ''}
+                                onChange={(e) => updateModelBatchQty(item.id, 'battery', parseInt(e.target.value) || 0)}
+                                placeholder="0"
+                                className="w-12 py-1 px-1.5 text-center font-mono font-black text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                              />
+                            </div>
 
-                        {/* 5. Rear Back Glass */}
-                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
-                          <div>
-                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">🛡 Back Glass</span>
-                            <span className="text-[9px] text-slate-400 font-bold">$25 unit cost</span>
-                          </div>
-                          <input
-                            type="number"
-                            min="0"
-                            value={qty.backglass || ''}
-                            onChange={(e) => updateModelBatchQty(item.id, 'backglass', parseInt(e.target.value) || 0)}
-                            placeholder="0"
-                            className="w-12 py-1 px-1.5 text-center font-mono font-black text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
-                          />
-                        </div>
+                            {/* 4. Charging Port */}
+                            <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
+                              <div>
+                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">⚡ Charge Port</span>
+                                <span className="text-[9px] text-slate-500 font-black">${msPort.wholesaleCost} MS Flex</span>
+                              </div>
+                              <input
+                                type="number"
+                                min="0"
+                                value={qty.port || ''}
+                                onChange={(e) => updateModelBatchQty(item.id, 'port', parseInt(e.target.value) || 0)}
+                                placeholder="0"
+                                className="w-12 py-1 px-1.5 text-center font-mono font-black text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                              />
+                            </div>
 
-                        {/* 6. Camera Lens / Module */}
-                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
-                          <div>
-                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">📷 Camera</span>
-                            <span className="text-[9px] text-slate-400 font-bold">$45 unit cost</span>
-                          </div>
-                          <input
-                            type="number"
-                            min="0"
-                            value={qty.camera || ''}
-                            onChange={(e) => updateModelBatchQty(item.id, 'camera', parseInt(e.target.value) || 0)}
-                            placeholder="0"
-                            className="w-12 py-1 px-1.5 text-center font-mono font-black text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
-                          />
-                        </div>
+                            {/* 5. Rear Back Glass */}
+                            <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
+                              <div>
+                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">🛡 Back Glass</span>
+                                <span className="text-[9px] text-slate-500 font-black">${msGlass.wholesaleCost} MS Glass</span>
+                              </div>
+                              <input
+                                type="number"
+                                min="0"
+                                value={qty.backglass || ''}
+                                onChange={(e) => updateModelBatchQty(item.id, 'backglass', parseInt(e.target.value) || 0)}
+                                placeholder="0"
+                                className="w-12 py-1 px-1.5 text-center font-mono font-black text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                              />
+                            </div>
 
-                        {/* 7. Logic Board */}
-                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
-                          <div>
-                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">📟 Logic Board</span>
-                            <span className="text-[9px] text-slate-400 font-bold">$180 unit cost</span>
+                            {/* 6. Camera Lens / Module */}
+                            <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
+                              <div>
+                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">📷 Camera</span>
+                                <span className="text-[9px] text-slate-500 font-black">${msCam.wholesaleCost} MS Cam</span>
+                              </div>
+                              <input
+                                type="number"
+                                min="0"
+                                value={qty.camera || ''}
+                                onChange={(e) => updateModelBatchQty(item.id, 'camera', parseInt(e.target.value) || 0)}
+                                placeholder="0"
+                                className="w-12 py-1 px-1.5 text-center font-mono font-black text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                              />
+                            </div>
+
+                            {/* 7. Logic Board */}
+                            <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
+                              <div>
+                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">📟 Logic Board</span>
+                                <span className="text-[9px] text-slate-500 font-black">${msBoard.wholesaleCost} MS Board</span>
+                              </div>
+                              <input
+                                type="number"
+                                min="0"
+                                value={qty.board || ''}
+                                onChange={(e) => updateModelBatchQty(item.id, 'board', parseInt(e.target.value) || 0)}
+                                placeholder="0"
+                                className="w-12 py-1 px-1.5 text-center font-mono font-black text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                              />
+                            </div>
                           </div>
-                          <input
-                            type="number"
-                            min="0"
-                            value={qty.board || ''}
-                            onChange={(e) => updateModelBatchQty(item.id, 'board', parseInt(e.target.value) || 0)}
-                            placeholder="0"
-                            className="w-12 py-1 px-1.5 text-center font-mono font-black text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
-                          />
-                        </div>
-                      </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}

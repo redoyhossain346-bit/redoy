@@ -20,6 +20,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { InventoryItem, Transaction } from '../types';
+import { getMobileSentrixPartPricing } from '../data/mobileSentrixPrices';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface LowStockBannerProps {
@@ -60,11 +61,26 @@ export default function LowStockBanner({
   const [copiedDraft, setCopiedDraft] = useState(false);
   const [createdExpense, setCreatedExpense] = useState(false);
 
-  // Open modal and prefill items
+  // Open modal and prefill items with MobileSentrix Wholesale Prices
   const handleOpenDraftModal = () => {
     const itemsForDraft = lowStockItems.map(item => {
       // Default reorder quantity = minStock * 2 - quantity (minimum 1)
       const suggestedQty = Math.max(1, (item.minStock * 2) - item.quantity);
+      
+      // Determine MobileSentrix part type from category / name
+      let partType: 'screen' | 'battery' | 'port' | 'backglass' | 'camera' | 'housing' | 'board' = 'screen';
+      const nameLower = item.name.toLowerCase();
+      const catLower = item.category.toLowerCase();
+
+      if (nameLower.includes('battery') || catLower.includes('battery')) partType = 'battery';
+      else if (nameLower.includes('port') || catLower.includes('port') || catLower.includes('flex')) partType = 'port';
+      else if (nameLower.includes('back glass') || nameLower.includes('rear glass') || catLower.includes('back glass')) partType = 'backglass';
+      else if (nameLower.includes('camera') || catLower.includes('camera')) partType = 'camera';
+      else if (nameLower.includes('board') || catLower.includes('board')) partType = 'board';
+      else if (nameLower.includes('housing') || catLower.includes('housing')) partType = 'housing';
+
+      const msPricing = getMobileSentrixPartPricing(item.model || item.name, partType, item.brand || 'Apple');
+
       return {
         id: item.id,
         name: item.name,
@@ -72,7 +88,7 @@ export default function LowStockBanner({
         currentQty: item.quantity,
         minStock: item.minStock,
         reorderQty: suggestedQty,
-        estimatedCost: item.price || 25,
+        estimatedCost: item.price || msPricing.wholesaleCost,
         brand: item.brand,
         model: item.model
       };
