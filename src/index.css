@@ -23,6 +23,10 @@
 @layer base {
   html {
     font-size: 125%;
+    transition: font-size 0.2s ease-in-out;
+  }
+  html.compact-mode {
+    font-size: 98%;
   }
   body {
     @apply bg-white text-slate-900 antialiased selection:bg-amber-500/20 selection:text-amber-900;
@@ -31,6 +35,39 @@
       radial-gradient(circle at 100% 100%, rgba(0, 0, 0, 0.01) 0%, transparent 40%);
     background-attachment: fixed;
   }
+}
+
+/* Compact Mode Overrides */
+html.compact-mode .glass-card {
+  padding: 1rem !important;
+  border-radius: 1.25rem !important;
+}
+
+html.compact-mode .glass-input {
+  height: 2.5rem !important;
+  padding-left: 0.875rem !important;
+  padding-right: 0.875rem !important;
+  border-radius: 0.75rem !important;
+  font-size: 0.8125rem !important;
+}
+
+html.compact-mode table td,
+html.compact-mode table th {
+  padding-top: 0.35rem !important;
+  padding-bottom: 0.35rem !important;
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+  font-size: 0.75rem !important;
+}
+
+html.compact-mode header {
+  margin-bottom: 1rem !important;
+  padding-bottom: 0.75rem !important;
+  padding-top: 0.5rem !important;
+}
+
+html.compact-mode tr {
+  height: auto !important;
 }
 
 @layer components {

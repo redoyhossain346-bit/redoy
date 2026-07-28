@@ -17,7 +17,7 @@ const CATEGORIES: Category[] = [
   'Screen replacement', 'Back glass', 'Other fix', 'Labor', 'Unlocking', 'Phone sell', 'Tablet Sell', 
   'Perfume', 'Doll', 'Case', 'Water Bottle', 'Accessories', 'Parts Sell', 'Toy sell',
   'Tempered Glass', 'Battery', 'Camera Protector', 'Watch Belt', 'Watch Protector',
-  'Carrier sell', 'Income', 'Food', 'Transport', 'Rent', 'Utilities', 'Shopping', 'Others'
+  'Carrier sell', 'Uber', 'Income', 'Food', 'Transport', 'Rent', 'Utilities', 'Shopping', 'Others'
 ];
 
 const CARRIERS = ['T-Mobile', 'AT&T', 'Lyca', 'Simple Mobile', 'Verizon', 'Boost Mobile', 'H2O', 'Cricket', 'Others'];
@@ -38,7 +38,7 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
   const [itemQuantity, setItemQuantity] = useState('1');
   const [deviceBrand, setDeviceBrand] = useState<string>('iPhone');
   const [deviceModel, setDeviceModel] = useState('');
-  const [deviceQuality, setDeviceQuality] = useState<string>('AQ7');
+  const [deviceQuality, setDeviceQuality] = useState<string>('');
   const [deviceImei, setDeviceImei] = useState('');
 
   const currentBrandModels = useMemo(() => {
@@ -204,10 +204,17 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
   const changeVal = cReceivedVal > 0 && cashToConsider > 0 ? Math.max(0, cReceivedVal - cashToConsider) : 0;
 
   const addItem = () => {
-    const amt = parseFloat(itemAmount);
-    const cost = parseFloat(itemCost);
+    const parsedAmt = parseFloat(itemAmount);
+    const parsedCost = parseFloat(itemCost);
     const qty = parseInt(itemQuantity) || 1;
-    if (!amt || isNaN(amt)) return;
+
+    // If cost is entered without a sell price (e.g. Uber / expense), default sell price to cost (no profit / expense)
+    const cost = (!isNaN(parsedCost) && parsedCost >= 0) ? parsedCost : undefined;
+    const amt = (!isNaN(parsedAmt) && parsedAmt > 0)
+      ? parsedAmt
+      : (cost !== undefined ? cost : 0);
+
+    if (amt <= 0 && (cost === undefined || cost <= 0)) return;
     
     const isDeviceSell = itemCategory === 'Phone sell' || itemCategory === 'Tablet Sell';
     const isCarrierSell = itemCategory === 'Carrier sell';
@@ -221,9 +228,9 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
       id: Math.random().toString(36).substr(2, 9),
       category: itemCategory,
       amount: amt,
-      cost: (!isNaN(cost) && cost >= 0) ? cost : undefined,
+      cost: cost,
       quantity: qty,
-      brand: isRepairOrPart && deviceBrand ? deviceBrand : undefined,
+      brand: isRepairOrPart && deviceBrand && deviceBrand !== 'None' ? deviceBrand : undefined,
       model: isRepairOrPart && deviceModel ? deviceModel : undefined,
       quality: isRepairOrPart && deviceQuality ? deviceQuality : undefined,
       ...(isDeviceSell ? {
@@ -526,11 +533,20 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
               <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4 shadow-sm">
                 <div className="flex items-center justify-between">
                   <label className="text-base font-black text-slate-400 block uppercase tracking-[0.2em]">Add Products / Services</label>
-                  {itemAmount && itemCost && (
-                    <div className="flex items-center gap-2 text-[10px] font-black uppercase px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      <span>Profit / Money Made:</span>
+                  {(itemAmount || itemCost) && (
+                    <div className={cn(
+                      "flex items-center gap-2 text-[10px] font-black uppercase px-3 py-1 rounded-full border",
+                      ((parseFloat(itemAmount) || parseFloat(itemCost) || 0) - (parseFloat(itemCost) || 0)) > 0
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-amber-50 text-amber-700 border-amber-200"
+                    )}>
+                      <span>
+                        {((parseFloat(itemAmount) || parseFloat(itemCost) || 0) - (parseFloat(itemCost) || 0)) > 0
+                          ? "Profit / Money Made:"
+                          : "Expense / At-Cost ($0 Profit):"}
+                      </span>
                       <span className="font-mono text-xs">
-                        +${(((parseFloat(itemAmount) || 0) - (parseFloat(itemCost) || 0)) * (parseInt(itemQuantity) || 1)).toFixed(2)}
+                        ${(((parseFloat(itemAmount) || parseFloat(itemCost) || 0) - (parseFloat(itemCost) || 0)) * (parseInt(itemQuantity) || 1)).toFixed(2)}
                       </span>
                     </div>
                   )}
@@ -577,10 +593,12 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
                       step="0.01"
                       value={itemAmount}
                       onChange={(e) => setItemAmount(e.target.value)}
-                      placeholder="Sell Price"
+                      placeholder={itemCost ? "Optional" : "Sell Price"}
                       className="glass-input h-16 w-full pl-8 pr-2 text-base font-black border-slate-200 bg-white text-emerald-600"
                     />
-                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] font-black text-emerald-600 bg-white px-1.5 uppercase tracking-widest leading-none border border-emerald-600/10 shadow-xs rounded-full">PRICE</span>
+                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] font-black text-emerald-600 bg-white px-1.5 uppercase tracking-widest leading-none border border-emerald-600/10 shadow-xs rounded-full">
+                      {itemCost && !itemAmount ? 'PRICE (OPTIONAL)' : 'PRICE'}
+                    </span>
                   </div>
 
                   <button
@@ -607,6 +625,21 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
                   <div className="space-y-1">
                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Select Brand:</span>
                     <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeviceBrand('None');
+                          setDeviceModel('');
+                        }}
+                        className={cn(
+                          "px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1 whitespace-nowrap cursor-pointer border",
+                          deviceBrand === 'None' || !deviceBrand
+                            ? "bg-slate-800 text-white border-slate-900 shadow-sm"
+                            : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                        )}
+                      >
+                        <span>None</span>
+                      </button>
                       {DEVICE_BRANDS.map(b => (
                         <button
                           key={b.brand}
@@ -660,20 +693,32 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
                       </div>
                     </div>
 
-                    {/* Quality Grade: AQ7, XO7, ORIGINAL */}
+                    {/* Quality Grade: None, AQ7, XO7, ORIGINAL, or Custom Manual Input */}
                     <div>
                       <label className="text-[10px] font-black text-slate-500 block uppercase tracking-wider mb-1 flex items-center justify-between">
                         <span>Quality / Grade</span>
-                        <span className="text-amber-600 font-black">{deviceQuality}</span>
+                        <span className="text-amber-600 font-black">{deviceQuality || 'None'}</span>
                       </label>
-                      <div className="grid grid-cols-3 gap-1.5 h-11">
+                      <div className="grid grid-cols-4 gap-1 h-9 mb-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setDeviceQuality('')}
+                          className={cn(
+                            "h-full rounded-xl text-[11px] font-black transition-all flex items-center justify-center border cursor-pointer uppercase tracking-wider",
+                            !deviceQuality
+                              ? "bg-slate-800 text-white border-slate-900 shadow-xs"
+                              : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
+                          )}
+                        >
+                          None
+                        </button>
                         {QUALITY_OPTIONS.map(q => (
                           <button
                             key={q}
                             type="button"
                             onClick={() => setDeviceQuality(q)}
                             className={cn(
-                              "h-full rounded-xl text-xs font-black transition-all flex items-center justify-center border cursor-pointer uppercase tracking-wider",
+                              "h-full rounded-xl text-[11px] font-black transition-all flex items-center justify-center border cursor-pointer uppercase tracking-wider",
                               deviceQuality === q
                                 ? "bg-amber-500 text-white border-amber-600 shadow-md shadow-amber-500/20 scale-[1.02]"
                                 : "bg-slate-50 text-slate-700 border-slate-200 hover:border-amber-300 hover:bg-amber-50/50"
@@ -683,6 +728,13 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
                           </button>
                         ))}
                       </div>
+                      <input
+                        type="text"
+                        value={deviceQuality}
+                        onChange={(e) => setDeviceQuality(e.target.value)}
+                        placeholder="Or type manual grade (e.g. OLED, Grade A)..."
+                        className="glass-input h-8 w-full px-2.5 text-[11px] font-black bg-white border-slate-200 focus:border-amber-500 rounded-xl"
+                      />
                     </div>
                   </div>
 

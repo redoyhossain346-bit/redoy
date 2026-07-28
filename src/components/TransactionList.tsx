@@ -17,6 +17,7 @@ interface TransactionListProps {
 }
 
 const CATEGORY_ICONS: Record<string, any> = {
+  Uber: <Car size={16} />,
   Food: <Utensils size={16} />,
   Transport: <Car size={16} />,
   Rent: <Home size={16} />,

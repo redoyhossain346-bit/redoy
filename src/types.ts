@@ -3,6 +3,7 @@ export type TransactionType = 'income' | 'expense' | 'refund';
 export type PaymentMethod = 'CASH' | 'CARD' | 'ZELLE';
 
 export type Category = 
+  | 'Uber'
   | 'Food' 
   | 'Transport' 
   | 'Rent' 
@@ -94,6 +95,9 @@ export interface InventoryItem {
   price: number;
   minStock: number;
   serialNumber?: string;
+  model?: string;
+  color?: string;
+  brand?: string;
 }
 
 export interface PartUsage {

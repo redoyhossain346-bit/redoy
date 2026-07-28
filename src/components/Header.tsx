@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserCircle, Check, Smartphone, MapPin, Phone, Mail, LogOut, LogIn, Download, FileSpreadsheet, Clock } from 'lucide-react';
+import { UserCircle, Check, Smartphone, MapPin, Phone, Mail, LogOut, LogIn, Download, FileSpreadsheet, Clock, Maximize2, Minimize2, Sliders } from 'lucide-react';
 import { UserProfile } from '../types';
 import { format } from 'date-fns';
 
@@ -16,6 +16,8 @@ interface HeaderProps {
   isSheetsConnected?: boolean;
   isGmailConnected?: boolean;
   lastLoginTime?: string;
+  isCompactMode?: boolean;
+  onToggleCompactMode?: () => void;
 }
 
 export default function Header({ 
@@ -30,7 +32,9 @@ export default function Header({
   onOpenGmail,
   isSheetsConnected = false,
   isGmailConnected = false,
-  lastLoginTime
+  lastLoginTime,
+  isCompactMode = false,
+  onToggleCompactMode
 }: HeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user.name);
@@ -109,6 +113,26 @@ export default function Header({
               <FileSpreadsheet size={14} />
               <span className={`w-2 h-2 rounded-full ${isSheetsConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
               <span>{isSheetsConnected ? 'Sheets Sync' : 'Sheets Setup'}</span>
+            </button>
+          )}
+
+          {onToggleCompactMode && (
+            <button
+              onClick={onToggleCompactMode}
+              className={`flex items-center gap-1.5 h-9 px-3 rounded-xl border transition-all cursor-pointer shadow-2xs text-xs font-black uppercase tracking-wider ${
+                isCompactMode
+                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-[0_0_15px_rgba(79,70,229,0.3)]'
+                  : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+              }`}
+              title={isCompactMode ? "Disable Compact Mode (Standard View)" : "Enable Compact Mode (Fits more rows & data on screen)"}
+            >
+              {isCompactMode ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+              <span className="hidden sm:inline">Compact</span>
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                isCompactMode ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+              }`}>
+                {isCompactMode ? 'ON' : 'OFF'}
+              </span>
             </button>
           )}
 

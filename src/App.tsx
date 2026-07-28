@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { Calendar, Filter, RefreshCw, LogIn } from 'lucide-react';
+import { Calendar, Filter, RefreshCw, LogIn, Maximize2, Minimize2, Sliders } from 'lucide-react';
 import Header from './components/Header';
 import HeroCard from './components/HeroCard';
 import TransactionForm from './components/TransactionForm';
@@ -17,6 +17,8 @@ import SalesSummary from './components/SalesSummary';
 import DailyStatement from './components/DailyStatement';
 import GoogleSheetsManagerModal from './components/GoogleSheetsManagerModal';
 import GmailManagerModal from './components/GmailManagerModal';
+import PhoneColorCatalog from './components/PhoneColorCatalog';
+import LowStockBanner from './components/LowStockBanner';
 import { Transaction, UserProfile, BudgetSummary, InventoryItem, PartUsage, WorkHour } from './types';
 import { cn, formatCurrency, uuid, generateNextTransactionId } from './lib/utils';
 import { format } from 'date-fns';
@@ -77,12 +79,24 @@ export default function App() {
   const [filterType, setFilterType] = useState<'month' | 'year' | 'range' | 'all'>('month');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [activeView, setActiveView] = useState<'dashboard' | 'inventory' | 'hours' | 'daily_log'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'daily_log' | 'inventory' | 'phone_colors'>('dashboard');
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [usageHistory, setUsageHistory] = useState<PartUsage[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [workHours, setWorkHours] = useState<WorkHour[]>([]);
   const [taxRate, setTaxRate] = useState<number>(0.081);
+  const [isCompactMode, setIsCompactMode] = useState<boolean>(() => {
+    return localStorage.getItem('is_compact_mode') === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('is_compact_mode', isCompactMode.toString());
+    if (isCompactMode) {
+      document.documentElement.classList.add('compact-mode');
+    } else {
+      document.documentElement.classList.remove('compact-mode');
+    }
+  }, [isCompactMode]);
 
   useEffect(() => {
     // Initial data load from local storage
@@ -170,9 +184,11 @@ export default function App() {
     await localStorageService.saveTaxRate(newRate);
   };
 
-  const lowStockCount = useMemo(() => {
-    return inventory.filter(item => item.quantity <= item.minStock).length;
+  const lowStockItems = useMemo(() => {
+    return inventory.filter(item => item.quantity <= item.minStock);
   }, [inventory]);
+
+  const lowStockCount = lowStockItems.length;
 
   const handleLogout = () => {
     setIsLoggedIn(false);
@@ -420,6 +436,8 @@ export default function App() {
         onOpenGmail={() => setIsGmailOpen(true)}
         isSheetsConnected={hasGoogleToken}
         lastLoginTime={lastLoginTime}
+        isCompactMode={isCompactMode}
+        onToggleCompactMode={() => setIsCompactMode(!isCompactMode)}
       />
       
       <PasscodeModal 
@@ -450,38 +468,29 @@ export default function App() {
         workHours={workHours}
       />
 
-      <div className="flex gap-2 bg-slate-100/50 p-2 rounded-3xl w-fit mx-auto mt-8 border border-slate-200 backdrop-blur-xl mb-6">
+      <div className="flex gap-2 bg-slate-100/50 p-2 rounded-3xl w-fit mx-auto mt-8 border border-slate-200 backdrop-blur-xl mb-6 flex-wrap justify-center">
         <button
           onClick={() => setActiveView('dashboard')}
           className={cn(
-            "px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300",
+            "px-6 sm:px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300",
             activeView === 'dashboard' ? "bg-amber-500 text-white shadow-[0_0_25px_rgba(245,158,11,0.2)]" : "text-slate-400 hover:text-slate-700 hover:bg-white"
           )}
         >
           Dashboard
         </button>
         <button
-          onClick={() => setActiveView('hours')}
-          className={cn(
-            "px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300",
-            activeView === 'hours' ? "bg-indigo-600 text-white shadow-[0_0_25px_rgba(79,70,229,0.2)]" : "text-slate-400 hover:text-slate-700 hover:bg-white"
-          )}
-        >
-          Shift Logs
-        </button>
-        <button
           onClick={() => setActiveView('daily_log')}
           className={cn(
-            "px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300",
+            "px-6 sm:px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300",
             activeView === 'daily_log' ? "bg-emerald-600 text-white shadow-[0_0_25px_rgba(5,150,105,0.2)]" : "text-slate-400 hover:text-slate-700 hover:bg-white"
           )}
         >
-          Daily Sheet
+          Shop Logs
         </button>
         <button
           onClick={() => setActiveView('inventory')}
           className={cn(
-            "px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300 relative",
+            "px-6 sm:px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300 relative",
             activeView === 'inventory' ? "bg-rose-600 text-white shadow-[0_0_25px_rgba(225,29,72,0.2)]" : "text-slate-400 hover:text-slate-700 hover:bg-white"
           )}
         >
@@ -492,9 +501,26 @@ export default function App() {
             </span>
           )}
         </button>
+        <button
+          onClick={() => setActiveView('phone_colors')}
+          className={cn(
+            "px-6 sm:px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300",
+            activeView === 'phone_colors' ? "bg-indigo-600 text-white shadow-[0_0_25px_rgba(79,70,229,0.25)] font-bold" : "text-slate-400 hover:text-slate-700 hover:bg-white"
+          )}
+        >
+          Colors & Models
+        </button>
       </div>
       
-      {activeView === 'inventory' ? (
+      {activeView === 'phone_colors' ? (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-6 min-h-[85vh] w-full"
+        >
+          <PhoneColorCatalog onOpenGoogleSheets={() => setIsGoogleSheetsOpen(true)} />
+        </motion.div>
+      ) : activeView === 'inventory' ? (
         <motion.div 
           initial={{ opacity: 0, rotateY: -10 }}
           animate={{ opacity: 1, rotateY: 0 }}
@@ -503,22 +529,11 @@ export default function App() {
           <InventoryManager 
             inventory={inventory} 
             usageHistory={usageHistory}
+            transactions={transactions}
             categories={categories}
             onUpdateInventory={handleUpdateInventory}
             onUpdateUsage={handleUpdateUsage}
             onUpdateCategories={handleUpdateCategories}
-            onRequestPasscode={onRequestPasscode}
-          />
-        </motion.div>
-      ) : activeView === 'hours' ? (
-        <motion.div 
-          initial={{ opacity: 0, rotateY: 10 }}
-          animate={{ opacity: 1, rotateY: 0 }}
-          className="mt-8 min-h-[70vh] [perspective:1200px]"
-        >
-          <WorkHoursTracker 
-            workHours={workHours}
-            onUpdate={handleUpdateWorkHours}
             onRequestPasscode={onRequestPasscode}
           />
         </motion.div>
@@ -540,6 +555,17 @@ export default function App() {
           transition={{ duration: 0.6, ease: "easeOut" }}
           className="[perspective:1500px]"
         >
+          {/* Automated Low Stock Notification Banner */}
+          <LowStockBanner
+            lowStockItems={lowStockItems}
+            onNavigateToInventory={() => setActiveView('inventory')}
+            onAddTransaction={handleAddTransaction}
+            onUpdateInventoryItem={(item) => {
+              const updated = inventory.map(i => i.id === item.id ? item : i);
+              handleUpdateInventory(updated);
+            }}
+          />
+
           {/* Top Info Grid: Statement Period & Balance */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-10">
             {/* Statement Period Selection */}
@@ -691,7 +717,7 @@ export default function App() {
                       <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className="glass-input text-xs font-black border-slate-200 bg-slate-50 appearance-none pl-6 pr-14 h-14 rounded-2xl min-w-[240px] focus:border-amber-500/50 outline-none uppercase tracking-[0.1em]"
+                        className="glass-input text-xs font-black border-slate-200 bg-slate-50 appearance-none pl-6 pr-14 h-14 rounded-2xl min-w-[220px] focus:border-amber-500/50 outline-none uppercase tracking-[0.1em]"
                       >
                         <option value="all" className="bg-white">Show All Statuses</option>
                         {['Not Started', 'Working Process', 'Bill Due', 'Pre-Order', 'Return', 'Pickup', 'Paid'].map(s => (
@@ -702,6 +728,36 @@ export default function App() {
                         <Filter size={20} />
                       </div>
                     </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] pl-1">Display Mode</label>
+                    <button
+                      onClick={() => setIsCompactMode(!isCompactMode)}
+                      className={cn(
+                        "flex items-center gap-3 px-5 h-14 rounded-2xl font-black text-xs uppercase tracking-wider transition-all duration-300 border cursor-pointer",
+                        isCompactMode
+                          ? "bg-indigo-600 border-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.3)]"
+                          : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                      )}
+                      title={isCompactMode ? "Switch to Standard View" : "Switch to Compact View (Fits more rows on screen)"}
+                    >
+                      {isCompactMode ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                      <div className="text-left leading-tight">
+                        <div className="flex items-center gap-2">
+                          <span>Compact Mode</span>
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-full text-[9px] font-black tracking-widest",
+                            isCompactMode ? "bg-white text-indigo-700" : "bg-slate-200 text-slate-600"
+                          )}>
+                            {isCompactMode ? 'ON' : 'OFF'}
+                          </span>
+                        </div>
+                        <p className={cn("text-[9px] font-normal normal-case", isCompactMode ? "text-indigo-100" : "text-slate-400")}>
+                          {isCompactMode ? "Reduced padding & font size" : "Spacious standard view"}
+                        </p>
+                      </div>
+                    </button>
                   </div>
 
                   <div className="flex-1 flex items-end justify-end self-end mb-1">
