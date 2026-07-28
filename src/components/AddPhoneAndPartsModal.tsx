@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Smartphone, Wrench, Plus, Search, Filter, Layers, Check, Sparkles, Tag, DollarSign, Package } from 'lucide-react';
+import { X, Smartphone, Wrench, Plus, Search, Filter, Layers, Check, Sparkles, Tag, DollarSign, Package, FileSpreadsheet, FileText, Download } from 'lucide-react';
 import { InventoryItem } from '../types';
 import { PHONE_COLORS_CATALOG, PhoneModelCatalogItem, PhoneColorVariant } from '../data/phoneColorsCatalog';
 import { DEVICE_BRANDS } from '../data/deviceModels';
 import { uuid } from '../lib/utils';
 import { getMobileSentrixPartPricing } from '../data/mobileSentrixPrices';
 import { motion, AnimatePresence } from 'framer-motion';
+import ExcelJS from 'exceljs';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { format } from 'date-fns';
 
 interface AddPhoneAndPartsModalProps {
   isOpen?: boolean;
@@ -505,6 +509,126 @@ export default function AddPhoneAndPartsModal({
     }
   };
 
+  // EXPORT FUNCTIONS (Excel XLSX & PDF)
+  const handleExportExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+    
+    // Worksheet 1: MobileSentrix Catalog & Parts Matrix
+    const sheet1 = workbook.addWorksheet('Phone Models & Parts Matrix');
+    
+    const matrixData = filteredCatalog.map(item => {
+      const msScreen = getMobileSentrixPartPricing(item.model, 'screen', item.brand);
+      const msBatt = getMobileSentrixPartPricing(item.model, 'battery', item.brand);
+      const msPort = getMobileSentrixPartPricing(item.model, 'port', item.brand);
+      const msGlass = getMobileSentrixPartPricing(item.model, 'backglass', item.brand);
+      const msCam = getMobileSentrixPartPricing(item.model, 'camera', item.brand);
+      const msBoard = getMobileSentrixPartPricing(item.model, 'board', item.brand);
+      const batchQty = batchQuantities[item.id] || { phoneUnits: 0, screen: 0, battery: 0, port: 0, backglass: 0, camera: 0, board: 0 };
+
+      return {
+        'Brand': item.brand,
+        'Phone Model': item.model,
+        'Official Colors': item.officialColors.map(c => c.name).join(', '),
+        'MSRP ($)': item.msrp || 799,
+        'OLED Screen XO7 ($)': msScreen.wholesaleCost,
+        'Screen Grade': msScreen.qualityGrade,
+        'Battery Ampsentrix ($)': msBatt.wholesaleCost,
+        'Charge Port Flex ($)': msPort.wholesaleCost,
+        'Back Glass ($)': msGlass.wholesaleCost,
+        'Camera Module ($)': msCam.wholesaleCost,
+        'Logic Board ($)': msBoard.wholesaleCost,
+        'Batch Phone Units': batchQty.phoneUnits || 0,
+        'Batch Screens': batchQty.screen || 0,
+        'Batch Batteries': batchQty.battery || 0,
+        'Batch Ports': batchQty.port || 0,
+        'Batch Glass': batchQty.backglass || 0,
+        'Batch Cameras': batchQty.camera || 0,
+        'Batch Boards': batchQty.board || 0
+      };
+    });
+
+    if (matrixData.length > 0) {
+      sheet1.columns = Object.keys(matrixData[0]).map(key => ({ header: key, key: key, width: 22 }));
+      sheet1.addRows(matrixData);
+      sheet1.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      sheet1.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
+    }
+
+    // Worksheet 2: Quick Summary Metrics
+    const sheet2 = workbook.addWorksheet('Catalog Summary');
+    sheet2.columns = [
+      { header: 'Catalog Metric', key: 'metric', width: 35 },
+      { header: 'Details / Value', key: 'value', width: 35 }
+    ];
+    sheet2.addRows([
+      { metric: 'Total Models Exported', value: filteredCatalog.length },
+      { metric: 'Total Catalog Models', value: fullCatalog.length },
+      { metric: 'Supplier Baseline', value: 'MobileSentrix Wholesale Pricing Matrix (mobilesentrix.com)' },
+      { metric: 'Export Generated Date', value: format(new Date(), 'yyyy-MM-dd HH:mm:ss') }
+    ]);
+    sheet2.getRow(1).font = { bold: true };
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Store_Phone_Models_And_MobileSentrix_Parts_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF('l', 'pt', 'a4');
+    const pageWidth = doc.internal.pageSize.width;
+
+    // Header Banner
+    doc.setFillColor(30, 41, 59); // Slate-900
+    doc.rect(0, 0, pageWidth, 50, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(15);
+    doc.text("Store Phone Models & MobileSentrix Wholesale Parts Price Matrix", 35, 32);
+    
+    doc.setFontSize(9);
+    doc.setTextColor(148, 163, 184);
+    doc.text(`Generated: ${format(new Date(), 'dd MMM yyyy, hh:mm a')}  |  Models: ${filteredCatalog.length}`, pageWidth - 260, 32);
+
+    const tableRows = filteredCatalog.map(item => {
+      const msScreen = getMobileSentrixPartPricing(item.model, 'screen', item.brand);
+      const msBatt = getMobileSentrixPartPricing(item.model, 'battery', item.brand);
+      const msPort = getMobileSentrixPartPricing(item.model, 'port', item.brand);
+      const msGlass = getMobileSentrixPartPricing(item.model, 'backglass', item.brand);
+      const msCam = getMobileSentrixPartPricing(item.model, 'camera', item.brand);
+      const msBoard = getMobileSentrixPartPricing(item.model, 'board', item.brand);
+
+      return [
+        item.brand,
+        item.model,
+        item.officialColors.map(c => c.name).slice(0, 3).join(', '),
+        `$${item.msrp || 799}`,
+        `$${msScreen.wholesaleCost} (${msScreen.qualityGrade.split(' ')[0]})`,
+        `$${msBatt.wholesaleCost} (Ampsentrix)`,
+        `$${msPort.wholesaleCost}`,
+        `$${msGlass.wholesaleCost}`,
+        `$${msCam.wholesaleCost}`,
+        `$${msBoard.wholesaleCost}`
+      ];
+    });
+
+    autoTable(doc, {
+      startY: 65,
+      head: [['Brand', 'Model', 'Colors', 'MSRP', 'Screen XO7', 'Battery', 'Port', 'Glass', 'Camera', 'Board']],
+      body: tableRows,
+      theme: 'grid',
+      headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+      styles: { fontSize: 8, cellPadding: 5 },
+      alternateRowStyles: { fillColor: [248, 250, 252] }
+    });
+
+    doc.save(`Store_Phone_Models_And_MobileSentrix_Parts_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+  };
+
   if (isInline) {
     return (
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xl w-full min-h-[85vh] flex flex-col relative overflow-hidden my-2">
@@ -531,16 +655,37 @@ export default function AddPhoneAndPartsModal({
             </div>
           </div>
 
-          {onClose && (
+          <div className="flex items-center gap-2 relative z-10">
             <button
-              onClick={onClose}
               type="button"
-              className="p-2.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-2xl transition-all cursor-pointer relative z-10 flex items-center gap-2 bg-slate-800/80 border border-slate-700"
+              onClick={handleExportExcel}
+              className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer border border-emerald-400/30"
+              title="Export Phone Models & MobileSentrix Parts to Excel"
             >
-              <span className="text-xs font-bold hidden sm:inline">Back to Stock</span>
-              <X size={20} />
+              <FileSpreadsheet size={16} />
+              <span className="hidden sm:inline">Export Excel</span>
             </button>
-          )}
+            <button
+              type="button"
+              onClick={handleExportPDF}
+              className="px-3 py-2 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer border border-rose-400/30"
+              title="Export Phone Models & MobileSentrix Parts to PDF"
+            >
+              <FileText size={16} />
+              <span className="hidden sm:inline">Export PDF</span>
+            </button>
+
+            {onClose && (
+              <button
+                onClick={onClose}
+                type="button"
+                className="p-2.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-2xl transition-all cursor-pointer flex items-center gap-2 bg-slate-800/80 border border-slate-700 ml-1"
+              >
+                <span className="text-xs font-bold hidden sm:inline">Back to Stock</span>
+                <X size={20} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* FORM BODY */}
@@ -620,6 +765,35 @@ export default function AddPhoneAndPartsModal({
                       {brand === 'Google' ? 'Google Pixel' : brand}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* EXPORT & CATALOG MATRIX ACTION BAR */}
+              <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-900 text-white rounded-2xl text-xs font-medium shadow-xs border border-slate-800">
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-amber-300 flex items-center gap-1.5">
+                    <Sparkles size={14} className="text-amber-400" />
+                    MobileSentrix Wholesale Matrix
+                  </span>
+                  <span className="text-slate-300 text-[11px] hidden sm:inline">| {filteredCatalog.length} Phone Models & Parts</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleExportExcel}
+                    className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-[11px] rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                  >
+                    <FileSpreadsheet size={14} />
+                    <span>Export Excel (.xlsx)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExportPDF}
+                    className="px-3 py-1.5 bg-rose-500 hover:bg-rose-400 text-white font-black text-[11px] rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                  >
+                    <FileText size={14} />
+                    <span>Export PDF</span>
+                  </button>
                 </div>
               </div>
 
@@ -1099,14 +1273,35 @@ export default function AddPhoneAndPartsModal({
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            type="button"
-            className="p-2.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-2xl transition-all cursor-pointer relative z-10 flex items-center gap-2 bg-slate-800/80 border border-slate-700"
-          >
-            <span className="text-xs font-bold hidden sm:inline">Close Workspace</span>
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-2 relative z-10">
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer border border-emerald-400/30"
+              title="Export Phone Models & MobileSentrix Parts to Excel"
+            >
+              <FileSpreadsheet size={16} />
+              <span className="hidden sm:inline">Export Excel</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleExportPDF}
+              className="px-3 py-2 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer border border-rose-400/30"
+              title="Export Phone Models & MobileSentrix Parts to PDF"
+            >
+              <FileText size={16} />
+              <span className="hidden sm:inline">Export PDF</span>
+            </button>
+
+            <button
+              onClick={onClose}
+              type="button"
+              className="p-2.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-2xl transition-all cursor-pointer flex items-center gap-2 bg-slate-800/80 border border-slate-700 ml-1"
+            >
+              <span className="text-xs font-bold hidden sm:inline">Close Workspace</span>
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* MODAL FORM BODY */}
