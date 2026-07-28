@@ -83,6 +83,7 @@ export default function InventoryManager({
   onUpdateCategories,
   onRequestPasscode
 }: InventoryManagerProps) {
+  const [activeInventoryTab, setActiveInventoryTab] = useState<'phone_parts' | 'stock' | 'colors'>('phone_parts');
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [isTakingPart, setIsTakingPart] = useState(false);
   const [isReturningPart, setIsReturningPart] = useState(false);
@@ -417,71 +418,131 @@ export default function InventoryManager({
   };
 
   return (
-    <div className="glass-card p-10 flex flex-col h-full bg-white border-slate-200 shadow-sm">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
-        <div className="flex items-center gap-4">
-          <div className="p-4 bg-amber-500/5 rounded-2xl text-amber-600 border border-amber-500/10 shadow-sm">
-            <Package size={28} />
-          </div>
-          <div>
-            <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase">Inventory Control</h2>
-            <p className="text-[10px] text-amber-600 font-black uppercase tracking-[0.3em]">Master Asset Registry</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          {selectedItemIds.length > 0 && (
-            <motion.button
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              onClick={() => setShowBulkDeleteConfirm(true)}
-              className="flex-1 sm:flex-none px-6 py-3 bg-rose-50 text-rose-600 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border border-rose-200 flex items-center justify-center gap-3 shadow-sm hover:bg-rose-100"
-            >
-              <Trash2 size={16} />
-              Purge ({selectedItemIds.length})
-            </motion.button>
+    <div className="glass-card p-6 sm:p-10 flex flex-col h-full bg-white border-slate-200 shadow-sm">
+      {/* INVENTORY WORKSPACE SUB-NAVIGATION BAR */}
+      <div className="flex items-center gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200 mb-6 flex-wrap">
+        <button
+          type="button"
+          onClick={() => setActiveInventoryTab('phone_parts')}
+          className={cn(
+            "flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer",
+            activeInventoryTab === 'phone_parts'
+              ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
           )}
-          <button 
-            onClick={() => setShowColorCatalogModal(true)}
-            className="flex-1 sm:flex-none px-5 py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border border-indigo-200 flex items-center justify-center gap-2 shadow-sm"
-            title="Open Phone Models & Official Colors Catalog"
-          >
-            <Palette size={16} />
-            Models & Colors
-          </button>
-          
-          <button 
-            onClick={() => setIsManagingCategories(true)}
-            className="flex-1 sm:flex-none px-6 py-3 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-700 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border border-slate-200 flex items-center justify-center gap-3 shadow-sm"
-          >
-            <Filter size={16} />
-            Categories
-          </button>
-          
-          <div className="flex h-12 gap-1 bg-slate-50 p-1 rounded-2xl border border-slate-200">
-            <button 
-              onClick={exportInventoryExcel}
-              className="flex items-center justify-center w-10 h-10 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
-              title="Export Inventory Excel"
-            >
-              <FileSpreadsheet size={18} />
-            </button>
-            <button 
-              onClick={exportInventoryPDF}
-              className="flex items-center justify-center w-10 h-10 text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
-              title="Export Inventory PDF"
-            >
-              <FileText size={18} />
-            </button>
-          </div>
+        >
+          <Smartphone size={18} />
+          <span>⚡ Store Phone Models & Repair Parts Manager</span>
+        </button>
 
-          <button 
-            onClick={() => setIsPhoneAndPartsModalOpen(true)}
-            className="flex-1 sm:flex-none px-6 py-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-[0_5px_20px_rgba(79,70,229,0.35)] flex items-center justify-center gap-2.5 cursor-pointer transform active:scale-95 border border-indigo-400/30"
-          >
-            <Smartphone size={16} />
-            Add Phone Model & Parts
-          </button>
+        <button
+          type="button"
+          onClick={() => setActiveInventoryTab('stock')}
+          className={cn(
+            "flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer",
+            activeInventoryTab === 'stock'
+              ? "bg-slate-900 text-white shadow-md"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+          )}
+        >
+          <Package size={18} />
+          <span>📦 Active Stock Control ({inventory.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveInventoryTab('colors')}
+          className={cn(
+            "flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer",
+            activeInventoryTab === 'colors'
+              ? "bg-slate-900 text-white shadow-md"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+          )}
+        >
+          <Palette size={18} />
+          <span>🎨 Phone Colors & Models Catalog</span>
+        </button>
+      </div>
+
+      {activeInventoryTab === 'phone_parts' ? (
+        <div className="flex-1 w-full">
+          <AddPhoneAndPartsModal
+            isInline={true}
+            categories={categories}
+            onAddMultipleItems={handleAddMultipleItems}
+            onClose={() => setActiveInventoryTab('stock')}
+          />
+        </div>
+      ) : activeInventoryTab === 'colors' ? (
+        <div className="flex-1 w-full mt-2">
+          <PhoneColorCatalog onOpenGoogleSheets={() => {}} />
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-amber-500/5 rounded-2xl text-amber-600 border border-amber-500/10 shadow-sm">
+                <Package size={28} />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase">Inventory Control</h2>
+                <p className="text-[10px] text-amber-600 font-black uppercase tracking-[0.3em]">Master Asset Registry</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              {selectedItemIds.length > 0 && (
+                <motion.button
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  onClick={() => setShowBulkDeleteConfirm(true)}
+                  className="flex-1 sm:flex-none px-6 py-3 bg-rose-50 text-rose-600 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border border-rose-200 flex items-center justify-center gap-3 shadow-sm hover:bg-rose-100"
+                >
+                  <Trash2 size={16} />
+                  Purge ({selectedItemIds.length})
+                </motion.button>
+              )}
+              <button 
+                onClick={() => setActiveInventoryTab('colors')}
+                className="flex-1 sm:flex-none px-5 py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border border-indigo-200 flex items-center justify-center gap-2 shadow-sm"
+                title="Open Phone Models & Official Colors Catalog"
+              >
+                <Palette size={16} />
+                Models & Colors
+              </button>
+              
+              <button 
+                onClick={() => setIsManagingCategories(true)}
+                className="flex-1 sm:flex-none px-6 py-3 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-700 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border border-slate-200 flex items-center justify-center gap-3 shadow-sm"
+              >
+                <Filter size={16} />
+                Categories
+              </button>
+              
+              <div className="flex h-12 gap-1 bg-slate-50 p-1 rounded-2xl border border-slate-200">
+                <button 
+                  onClick={exportInventoryExcel}
+                  className="flex items-center justify-center w-10 h-10 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                  title="Export Inventory Excel"
+                >
+                  <FileSpreadsheet size={18} />
+                </button>
+                <button 
+                  onClick={exportInventoryPDF}
+                  className="flex items-center justify-center w-10 h-10 text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                  title="Export Inventory PDF"
+                >
+                  <FileText size={18} />
+                </button>
+              </div>
+
+              <button 
+                onClick={() => setActiveInventoryTab('phone_parts')}
+                className="flex-1 sm:flex-none px-6 py-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-[0_5px_20px_rgba(79,70,229,0.35)] flex items-center justify-center gap-2.5 cursor-pointer transform active:scale-95 border border-indigo-400/30"
+              >
+                <Smartphone size={16} />
+                Phone Models & Parts
+              </button>
           <button 
             onClick={() => setIsReturningPart(true)}
             className="flex-1 sm:flex-none px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-[0_5px_15px_rgba(5,150,105,0.2)] flex items-center justify-center gap-3"
@@ -695,7 +756,11 @@ export default function InventoryManager({
             )}
           </div>
         </div>
-      </div>      {/* Modals & Notifications */}
+      </div>
+      </>
+      )}
+
+      {/* Modals & Notifications */}
       <AnimatePresence>
         {notification && (
           <motion.div 

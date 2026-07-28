@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Clock, Plus, Trash2, Calendar as CalendarIcon, User, Search, UserCheck, Briefcase } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Clock, Plus, Trash2, Calendar as CalendarIcon, User, Search, UserCheck, Briefcase, DollarSign, Calculator, Users } from 'lucide-react';
 import { WorkHour } from '../types';
 import { format } from 'date-fns';
-import { cn, uuid, format12Hour, formatDateSafe } from '../lib/utils';
+import { cn, uuid, format12Hour, formatDateSafe, formatCurrency } from '../lib/utils';
 
 interface WorkHoursTrackerProps {
   workHours: WorkHour[];
@@ -49,6 +49,8 @@ export default function WorkHoursTracker({ workHours, onUpdate, onRequestPasscod
   const [selectedEmployeeFilter, setSelectedEmployeeFilter] = useState('ALL');
   const [startDateFilter, setStartDateFilter] = useState('');
   const [endDateFilter, setEndDateFilter] = useState('');
+
+  const [hourlyRate, setHourlyRate] = useState<number>(15);
 
   // Extract unique employee names for quick picks
   const recentEmployees = Array.from(
@@ -150,6 +152,23 @@ export default function WorkHoursTracker({ workHours, onUpdate, onRequestPasscod
   );
   const totalEmployees = filteredEmployees.length;
 
+  // Group employee totals: { [employeeName]: { totalHours: number, shiftCount: number, lastShiftDate: string } }
+  const employeeSummary = useMemo(() => {
+    const summary: Record<string, { totalHours: number; shiftCount: number; lastShiftDate: string }> = {};
+    filteredWorkHours.forEach(h => {
+      const name = h.employeeName?.trim() || 'Staff Member';
+      if (!summary[name]) {
+        summary[name] = { totalHours: 0, shiftCount: 0, lastShiftDate: h.date };
+      }
+      summary[name].totalHours += h.hours;
+      summary[name].shiftCount += 1;
+      if (h.date > summary[name].lastShiftDate) {
+        summary[name].lastShiftDate = h.date;
+      }
+    });
+    return Object.entries(summary).sort((a, b) => b[1].totalHours - a[1].totalHours);
+  }, [filteredWorkHours]);
+
   return (
     <div className="space-y-8">
       {/* Top Metric Cards */}
@@ -193,6 +212,93 @@ export default function WorkHoursTracker({ workHours, onUpdate, onRequestPasscod
           </div>
         </div>
       </div>
+
+      {/* Employee Total Hours & Wage Calculator */}
+      {employeeSummary.length > 0 && (
+        <div className="glass-card p-6 bg-white border-slate-200 shadow-sm rounded-3xl space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-indigo-600 text-white rounded-xl shadow-sm">
+                <Users size={20} />
+              </div>
+              <div>
+                <h2 className="text-base font-black text-slate-900 uppercase tracking-wider">Employee Hours & Payroll Summary</h2>
+                <p className="text-xs text-slate-400 font-medium">Calculated total work hours and estimated payout per staff member.</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-200 self-start sm:self-auto">
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">Hourly Rate:</span>
+              <div className="relative w-28">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">$</span>
+                <input 
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={hourlyRate}
+                  onChange={(e) => setHourlyRate(parseFloat(e.target.value) || 0)}
+                  className="w-full pl-6 pr-2 py-1 text-xs font-black bg-white border border-slate-200 rounded-xl text-slate-800 font-mono outline-none focus:border-indigo-500"
+                  placeholder="15.00"
+                />
+              </div>
+              <span className="text-[10px] font-bold text-slate-400">/hr</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+            {employeeSummary.map(([empName, data]) => {
+              const estimatedPay = data.totalHours * hourlyRate;
+              const isSelected = selectedEmployeeFilter === empName;
+              return (
+                <div 
+                  key={empName}
+                  className={cn(
+                    "p-4 rounded-2xl border transition-all flex flex-col justify-between space-y-3",
+                    isSelected 
+                      ? "bg-indigo-50/80 border-indigo-300 ring-2 ring-indigo-500/20 shadow-sm"
+                      : "bg-slate-50/60 border-slate-200 hover:bg-white hover:border-slate-300 shadow-2xs"
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-xs border border-indigo-200">
+                        <User size={14} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-tight">{empName}</h4>
+                        <p className="text-[10px] text-slate-400 font-bold">{data.shiftCount} {data.shiftCount === 1 ? 'Shift' : 'Shifts'} Logged</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedEmployeeFilter(isSelected ? 'ALL' : empName)}
+                      className={cn(
+                        "text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg transition-all cursor-pointer border",
+                        isSelected 
+                          ? "bg-indigo-600 text-white border-indigo-600" 
+                          : "bg-white text-slate-600 border-slate-200 hover:bg-indigo-50 hover:text-indigo-600"
+                      )}
+                    >
+                      {isSelected ? 'Showing' : 'Filter Shifts'}
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/60">
+                    <div>
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Total Hours</span>
+                      <span className="text-lg font-black text-slate-900 font-mono">{data.totalHours.toFixed(1)} <span className="text-[10px] text-slate-500">HRS</span></span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest block">Est. Payout</span>
+                      <span className="text-lg font-black text-emerald-600 font-mono">{formatCurrency(estimatedPay)}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Main Shift Input Form */}
       <div className="glass-card p-8 bg-white border-slate-200 shadow-sm rounded-3xl space-y-6">

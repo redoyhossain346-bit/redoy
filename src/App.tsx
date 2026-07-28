@@ -79,7 +79,7 @@ export default function App() {
   const [filterType, setFilterType] = useState<'month' | 'year' | 'range' | 'all'>('month');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [activeView, setActiveView] = useState<'dashboard' | 'daily_log' | 'inventory' | 'phone_colors'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'shift_logs' | 'inventory' | 'phone_colors'>('dashboard');
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [usageHistory, setUsageHistory] = useState<PartUsage[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -479,13 +479,13 @@ export default function App() {
           Dashboard
         </button>
         <button
-          onClick={() => setActiveView('daily_log')}
+          onClick={() => setActiveView('shift_logs')}
           className={cn(
             "px-6 sm:px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300",
-            activeView === 'daily_log' ? "bg-emerald-600 text-white shadow-[0_0_25px_rgba(5,150,105,0.2)]" : "text-slate-400 hover:text-slate-700 hover:bg-white"
+            activeView === 'shift_logs' ? "bg-emerald-600 text-white shadow-[0_0_25px_rgba(5,150,105,0.2)]" : "text-slate-400 hover:text-slate-700 hover:bg-white"
           )}
         >
-          Shop Logs
+          Shift Logs & Hours
         </button>
         <button
           onClick={() => setActiveView('inventory')}
@@ -537,15 +537,16 @@ export default function App() {
             onRequestPasscode={onRequestPasscode}
           />
         </motion.div>
-      ) : activeView === 'daily_log' ? (
+      ) : activeView === 'shift_logs' ? (
         <motion.div 
           initial={{ opacity: 0, scale: 0.95, rotateX: 5 }}
           animate={{ opacity: 1, scale: 1, rotateX: 0 }}
           className="mt-8 min-h-[70vh] [perspective:1200px]"
         >
-          <DailyStatement 
-            transactions={filteredTransactions}
-            workHours={filteredWorkHours}
+          <WorkHoursTracker 
+            workHours={workHours}
+            onUpdate={handleUpdateWorkHours}
+            onRequestPasscode={onRequestPasscode}
           />
         </motion.div>
       ) : (

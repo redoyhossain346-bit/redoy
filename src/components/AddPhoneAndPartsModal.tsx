@@ -7,8 +7,9 @@ import { uuid } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface AddPhoneAndPartsModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+  isOpen?: boolean;
+  isInline?: boolean;
+  onClose?: () => void;
   categories: string[];
   onAddMultipleItems: (items: InventoryItem[]) => void;
 }
@@ -44,7 +45,8 @@ const DEFAULT_STANDARD_COLORS: PhoneColorVariant[] = [
 ];
 
 export default function AddPhoneAndPartsModal({
-  isOpen,
+  isOpen = false,
+  isInline = false,
   onClose,
   categories,
   onAddMultipleItems
@@ -267,6 +269,9 @@ export default function AddPhoneAndPartsModal({
 
   // Selected model object
   const selectedModelObj = fullCatalog.find(m => m.id === selectedCatalogId) || fullCatalog[0];
+  const targetBrand = isCustomModel ? customBrand : selectedModelObj?.brand || 'Phone';
+  const targetModel = isCustomModel ? (customModel || 'Custom Phone') : selectedModelObj?.model || 'Device';
+  const availableColors = selectedModelObj?.officialColors || DEFAULT_STANDARD_COLORS;
 
   useEffect(() => {
     if (!isCustomModel && selectedModelObj) {
@@ -279,7 +284,19 @@ export default function AddPhoneAndPartsModal({
     }
   }, [selectedCatalogId, isCustomModel, selectedModelObj]);
 
-  if (!isOpen) return null;
+  const totalBatchItemsCount = useMemo(() => {
+    return Object.values(batchQuantities).reduce((acc: number, q: ModelBatchQty) => 
+      acc + (q.phoneUnits || 0) + (q.screen || 0) + (q.battery || 0) + (q.port || 0) + (q.backglass || 0) + (q.camera || 0) + (q.board || 0), 0
+    );
+  }, [batchQuantities]);
+
+  const totalBatchModelsCount = useMemo(() => {
+    return Object.values(batchQuantities).filter((q: ModelBatchQty) => 
+      ((q.phoneUnits || 0) + (q.screen || 0) + (q.battery || 0) + (q.port || 0) + (q.backglass || 0) + (q.camera || 0) + (q.board || 0)) > 0
+    ).length;
+  }, [batchQuantities]);
+
+  if (!isInline && !isOpen) return null;
 
   const handleTogglePart = (id: string) => {
     setSpareParts(prev => prev.map(p => p.id === id ? { ...p, enabled: !p.enabled } : p));
@@ -465,44 +482,589 @@ export default function AddPhoneAndPartsModal({
 
     if (itemsToAdd.length > 0) {
       onAddMultipleItems(itemsToAdd);
-      onClose();
+      onClose?.();
     }
   };
 
-  const totalBatchItemsCount = useMemo(() => {
-    return Object.values(batchQuantities).reduce((acc: number, q: ModelBatchQty) => 
-      acc + (q.phoneUnits || 0) + (q.screen || 0) + (q.battery || 0) + (q.port || 0) + (q.backglass || 0) + (q.camera || 0) + (q.board || 0), 0
-    );
-  }, [batchQuantities]);
-
-  const totalBatchModelsCount = useMemo(() => {
-    return Object.values(batchQuantities).filter((q: ModelBatchQty) => 
-      ((q.phoneUnits || 0) + (q.screen || 0) + (q.battery || 0) + (q.port || 0) + (q.backglass || 0) + (q.camera || 0) + (q.board || 0)) > 0
-    ).length;
-  }, [batchQuantities]);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/75 backdrop-blur-md overflow-y-auto">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 15 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.96, y: 15 }}
-        className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-3xl w-full my-6 overflow-hidden flex flex-col relative"
-      >
+  if (isInline) {
+    return (
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-xl w-full min-h-[85vh] flex flex-col relative overflow-hidden my-2">
         {/* TOP HEADER - Gradient Banner */}
-        <div className="bg-slate-900 text-white p-5 sm:p-6 flex items-center justify-between border-b border-slate-800 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/80 via-purple-900/60 to-slate-900 pointer-events-none" />
+        <div className="bg-slate-900 text-white p-4 sm:p-6 flex items-center justify-between border-b border-slate-800 relative overflow-hidden shrink-0">
+          <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/90 via-purple-900/70 to-slate-900 pointer-events-none" />
           
           <div className="flex items-center gap-3.5 relative z-10">
             <div className="p-3 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-600/30 flex items-center justify-center border border-indigo-400/30 shrink-0">
-              <Smartphone size={22} />
+              <Smartphone size={24} />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2">
-                Store Phone Models & Parts Manager
-              </h2>
-              <p className="text-xs text-indigo-200 font-medium mt-0.5">
-                Register phone store units & initialize matching repair spare parts across {fullCatalog.length}+ phone models
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2">
+                  Store Phone Models & Repair Parts Manager
+                </h2>
+                <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full">
+                  Full Page Workspace
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-indigo-200 font-medium mt-0.5">
+                Register store phone units & initialize matching repair spare parts across {fullCatalog.length}+ phone models
+              </p>
+            </div>
+          </div>
+
+          {onClose && (
+            <button
+              onClick={onClose}
+              type="button"
+              className="p-2.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-2xl transition-all cursor-pointer relative z-10 flex items-center gap-2 bg-slate-800/80 border border-slate-700"
+            >
+              <span className="text-xs font-bold hidden sm:inline">Back to Stock</span>
+              <X size={20} />
+            </button>
+          )}
+        </div>
+
+        {/* FORM BODY */}
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 md:p-8 space-y-5 overflow-y-auto flex-1 flex flex-col custom-scrollbar">
+          
+          {/* TOP MODE SWITCHER */}
+          <div className="flex items-center gap-3 p-2 bg-slate-100 rounded-2xl border border-slate-200 shrink-0">
+            <button
+              type="button"
+              onClick={() => setEntryMode('auto_batch')}
+              className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                entryMode === 'auto_batch'
+                  ? 'bg-slate-900 text-white shadow-md'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+              }`}
+            >
+              <Sparkles size={16} className="text-amber-400 shrink-0" />
+              <span>⚡ Automatic Quantity Entry (Model by Model)</span>
+              {totalBatchItemsCount > 0 && (
+                <span className="bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full ml-1 animate-pulse">
+                  {totalBatchItemsCount} Items Ready
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setEntryMode('single_model')}
+              className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                entryMode === 'single_model'
+                  ? 'bg-slate-900 text-white shadow-md'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+              }`}
+            >
+              <Smartphone size={16} className="text-indigo-400 shrink-0" />
+              <span>🛠 Single Model Detailed Setup</span>
+            </button>
+          </div>
+
+          {/* MODE 1: AUTO BATCH */}
+          {entryMode === 'auto_batch' && (
+            <div className="space-y-4 flex-1 flex flex-col">
+              {/* SEARCH & FILTERS ROW */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200 shrink-0">
+                <div className="relative flex-1">
+                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search model (e.g. iPhone 16 Pro Max, S25 Ultra, Pixel)..."
+                    className="w-full pl-10 pr-4 py-2 text-xs font-bold bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
+                  {['All', 'Apple', 'Samsung', 'Google', 'Motorola', 'Xiaomi', 'OnePlus'].map(brand => (
+                    <button
+                      key={brand}
+                      type="button"
+                      onClick={() => setSelectedBrandFilter(brand)}
+                      className={`px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer border ${
+                        selectedBrandFilter === brand
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {brand === 'Google' ? 'Google Pixel' : brand}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* MODEL BY MODEL CARDS LIST */}
+              <div className="space-y-4 flex-1 min-h-[420px] overflow-y-auto pr-2 custom-scrollbar">
+                {filteredCatalog.map((item) => {
+                  const qty = getModelBatchQty(item.id);
+                  const heroColor = item.officialColors.find(c => c.isHeroFinish)?.name || item.officialColors[0]?.name || 'Standard';
+                  const modelTotalCount = (qty.phoneUnits || 0) + (qty.screen || 0) + (qty.battery || 0) + (qty.port || 0) + (qty.backglass || 0) + (qty.camera || 0) + (qty.board || 0);
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={`p-4 sm:p-5 rounded-2xl border transition-all ${
+                        modelTotalCount > 0
+                          ? 'bg-indigo-50/50 border-indigo-400 shadow-sm ring-2 ring-indigo-500/20'
+                          : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
+                      }`}
+                    >
+                      {/* CARD HEADER */}
+                      <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-200/80">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-[11px] font-black uppercase tracking-wider text-white bg-slate-900 px-3 py-1 rounded-xl shadow-xs">
+                            {item.brand}
+                          </span>
+                          <h3 className="text-base font-black text-slate-900">
+                            {item.model}
+                          </h3>
+                          <span className="text-xs font-semibold text-slate-500">
+                            ({item.releaseYear})
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {/* Hero Color Badge */}
+                          <span className="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                            <span
+                              className="w-3 h-3 rounded-full border border-slate-300"
+                              style={{ backgroundColor: item.officialColors[0]?.hex || '#64748b' }}
+                            />
+                            {heroColor}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => quickSetAllModelParts(item.id, 1)}
+                            className="text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-xl cursor-pointer transition-all active:scale-95"
+                          >
+                            +1 All
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateModelBatchQty(item.id, 'battery', (qty.battery || 0) + 5)}
+                            className="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-xl cursor-pointer transition-all active:scale-95"
+                          >
+                            +5 Batteries
+                          </button>
+                          {modelTotalCount > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => clearModelBatchQty(item.id)}
+                              className="text-xs font-bold text-rose-600 hover:bg-rose-50 px-2.5 py-1 rounded-xl cursor-pointer transition-all border border-transparent hover:border-rose-200"
+                            >
+                              Reset
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* ITEM QUANTITY INPUTS GRID */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5 pt-3.5">
+                        {/* 1. Phone Units */}
+                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
+                          <div>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">📱 Phone Units</span>
+                            <span className="text-[9px] text-slate-400 font-bold">$350 unit cost</span>
+                          </div>
+                          <input
+                            type="number"
+                            min="0"
+                            value={qty.phoneUnits || ''}
+                            onChange={(e) => updateModelBatchQty(item.id, 'phoneUnits', parseInt(e.target.value) || 0)}
+                            placeholder="0"
+                            className="w-12 py-1 px-1.5 text-center font-mono font-black text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                          />
+                        </div>
+
+                        {/* 2. Screen Assembly */}
+                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
+                          <div>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">🖥 Screen OLED</span>
+                            <span className="text-[9px] text-slate-400 font-bold">$120 unit cost</span>
+                          </div>
+                          <input
+                            type="number"
+                            min="0"
+                            value={qty.screen || ''}
+                            onChange={(e) => updateModelBatchQty(item.id, 'screen', parseInt(e.target.value) || 0)}
+                            placeholder="0"
+                            className="w-12 py-1 px-1.5 text-center font-mono font-black text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                          />
+                        </div>
+
+                        {/* 3. Battery Replacement */}
+                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
+                          <div>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">🔋 Battery Pack</span>
+                            <span className="text-[9px] text-slate-400 font-bold">$22 unit cost</span>
+                          </div>
+                          <input
+                            type="number"
+                            min="0"
+                            value={qty.battery || ''}
+                            onChange={(e) => updateModelBatchQty(item.id, 'battery', parseInt(e.target.value) || 0)}
+                            placeholder="0"
+                            className="w-12 py-1 px-1.5 text-center font-mono font-black text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                          />
+                        </div>
+
+                        {/* 4. Charging Port */}
+                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
+                          <div>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">⚡ Charge Port</span>
+                            <span className="text-[9px] text-slate-400 font-bold">$18 unit cost</span>
+                          </div>
+                          <input
+                            type="number"
+                            min="0"
+                            value={qty.port || ''}
+                            onChange={(e) => updateModelBatchQty(item.id, 'port', parseInt(e.target.value) || 0)}
+                            placeholder="0"
+                            className="w-12 py-1 px-1.5 text-center font-mono font-black text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                          />
+                        </div>
+
+                        {/* 5. Rear Back Glass */}
+                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
+                          <div>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">🛡 Back Glass</span>
+                            <span className="text-[9px] text-slate-400 font-bold">$25 unit cost</span>
+                          </div>
+                          <input
+                            type="number"
+                            min="0"
+                            value={qty.backglass || ''}
+                            onChange={(e) => updateModelBatchQty(item.id, 'backglass', parseInt(e.target.value) || 0)}
+                            placeholder="0"
+                            className="w-12 py-1 px-1.5 text-center font-mono font-black text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                          />
+                        </div>
+
+                        {/* 6. Camera Lens / Module */}
+                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
+                          <div>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">📷 Camera</span>
+                            <span className="text-[9px] text-slate-400 font-bold">$45 unit cost</span>
+                          </div>
+                          <input
+                            type="number"
+                            min="0"
+                            value={qty.camera || ''}
+                            onChange={(e) => updateModelBatchQty(item.id, 'camera', parseInt(e.target.value) || 0)}
+                            placeholder="0"
+                            className="w-12 py-1 px-1.5 text-center font-mono font-black text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                          />
+                        </div>
+
+                        {/* 7. Logic Board */}
+                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
+                          <div>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">📟 Logic Board</span>
+                            <span className="text-[9px] text-slate-400 font-bold">$180 unit cost</span>
+                          </div>
+                          <input
+                            type="number"
+                            min="0"
+                            value={qty.board || ''}
+                            onChange={(e) => updateModelBatchQty(item.id, 'board', parseInt(e.target.value) || 0)}
+                            placeholder="0"
+                            className="w-12 py-1 px-1.5 text-center font-mono font-black text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* MODE 2: SINGLE MODEL SETUP */}
+          {entryMode === 'single_model' && (
+            <div className="space-y-5">
+              {/* BRAND & MODEL CATALOG PICKER */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
+                    1. Select Official Model from Catalog
+                  </label>
+                  <select
+                    value={selectedCatalogId}
+                    onChange={(e) => setSelectedCatalogId(e.target.value)}
+                    className="w-full py-2.5 px-3 text-xs font-bold bg-white border border-slate-300 rounded-xl outline-none focus:border-indigo-600"
+                  >
+                    {fullCatalog.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.brand} - {item.model} ({item.releaseYear})
+                      </option>
+                    ))}
+                    <option value="custom">+ Add Custom / Other Phone Model</option>
+                  </select>
+                </div>
+
+                {isCustomModel ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">Brand</label>
+                      <input
+                        type="text"
+                        value={customBrand}
+                        onChange={(e) => setCustomBrand(e.target.value)}
+                        placeholder="e.g. Apple / Samsung"
+                        className="w-full py-2 px-3 text-xs font-bold bg-white border border-slate-300 rounded-xl outline-none focus:border-indigo-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">Model Name</label>
+                      <input
+                        type="text"
+                        value={customModel}
+                        onChange={(e) => setCustomModel(e.target.value)}
+                        placeholder="e.g. iPhone SE 3"
+                        className="w-full py-2 px-3 text-xs font-bold bg-white border border-slate-300 rounded-xl outline-none focus:border-indigo-600"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
+                      2. Official Color Finish
+                    </label>
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                      {availableColors.map((col) => (
+                        <button
+                          key={col.name}
+                          type="button"
+                          onClick={() => setColorVariant(col.name)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer border ${
+                            colorVariant === col.name
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          <span
+                            className="w-3 h-3 rounded-full border border-slate-300 shrink-0"
+                            style={{ backgroundColor: col.hex }}
+                          />
+                          <span>{col.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* PHONE UNIT DETAILS SECTION */}
+              <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-200/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                    📱 Phone Unit Details ({targetModel})
+                  </span>
+                  <span className="text-[10px] font-black text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-md">
+                    Category: Store Phone Inventory
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2">
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">Storage</label>
+                    <select
+                      value={storageSpec}
+                      onChange={(e) => setStorageSpec(e.target.value)}
+                      className="w-full py-2 px-3 text-xs font-bold bg-white border border-slate-300 rounded-xl outline-none focus:border-indigo-600"
+                    >
+                      <option value="64GB">64GB</option>
+                      <option value="128GB">128GB</option>
+                      <option value="256GB">256GB</option>
+                      <option value="512GB">512GB</option>
+                      <option value="1TB">1TB</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">Phone Units Qty</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={phoneUnits}
+                      onChange={(e) => setPhoneUnits(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-full py-2 px-3 text-xs font-mono font-bold bg-white border border-slate-300 rounded-xl outline-none focus:border-indigo-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">Unit Price ($)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={phoneCost}
+                      onChange={(e) => setPhoneCost(Math.max(0, parseFloat(e.target.value) || 0))}
+                      className="w-full py-2 px-3 text-xs font-mono font-bold bg-white border border-slate-300 rounded-xl outline-none focus:border-indigo-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">Shelf Bin / Location</label>
+                    <input
+                      type="text"
+                      value={shelfBin}
+                      onChange={(e) => setShelfBin(e.target.value)}
+                      placeholder="e.g. Cabinet A-3"
+                      className="w-full py-2 px-3 text-xs font-bold bg-white border border-slate-300 rounded-xl outline-none focus:border-indigo-600"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* REPAIR SPARE PARTS CONFIGURATION GRID */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-2">
+                    <Wrench size={15} className="text-purple-600" />
+                    Matching Repair Parts to Add for {targetModel}
+                  </h3>
+                  <span className="text-[10px] text-slate-500 font-bold">
+                    {spareParts.filter(p => p.enabled).length} Parts Selected
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Check parts you want to initialize for this model. Each selected part will be created as a separate inventory item.
+                </p>
+
+                {/* SPARE PARTS GRID */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+                  {spareParts.map((part) => (
+                    <div
+                      key={part.id}
+                      className={`p-3.5 rounded-2xl border transition-all ${
+                        part.enabled
+                          ? 'bg-white border-purple-400 shadow-sm ring-1 ring-purple-500/10'
+                          : 'bg-slate-50/60 border-slate-200 opacity-60'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2 pb-2">
+                        <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={part.enabled}
+                            onChange={() => handleTogglePart(part.id)}
+                            className="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500"
+                          />
+                          <span className="text-xs font-black text-slate-900 truncate">{part.name}</span>
+                        </label>
+                      </div>
+
+                      {part.enabled && (
+                        <div className="space-y-2 pt-2 border-t border-slate-100">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">Pieces Qty</label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={part.piecesCount}
+                                onChange={(e) => handlePiecesCountChange(part.id, parseInt(e.target.value) || 1)}
+                                className="w-full py-1 px-2 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg outline-none focus:border-purple-600"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">Unit Cost ($)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={part.unitCost}
+                                onChange={(e) => handleCostChange(part.id, parseFloat(e.target.value) || 0)}
+                                className="w-full py-1 px-2 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg outline-none focus:border-purple-600"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-0.5">Quality Grade</label>
+                            <select
+                              value={part.quality}
+                              onChange={(e) => handleQualityChange(part.id, e.target.value as QualityGrade)}
+                              className="w-full py-1 px-2 text-[10px] font-bold bg-white border border-slate-300 rounded-lg outline-none focus:border-purple-600"
+                            >
+                              <option value="Original / OLED">Original / OLED</option>
+                              <option value="OEM Original">OEM Original</option>
+                              <option value="Aftermarket">Aftermarket</option>
+                              <option value="Refurbished">Refurbished</option>
+                              <option value="Premium Copy">Premium Copy</option>
+                            </select>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SUBMIT BUTTON BAR */}
+          <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+            <p className="text-xs text-slate-500 font-medium">
+              {entryMode === 'auto_batch' ? (
+                <span>Batch Mode: Quick enter quantities per model across {fullCatalog.length} models.</span>
+              ) : (
+                <span>Configuring model <strong className="text-slate-900">{targetModel}</strong> ({colorVariant}).</span>
+              )}
+            </p>
+
+            <button
+              type="submit"
+              className="w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg shadow-indigo-600/30 transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-2"
+            >
+              <Check size={18} />
+              <span>Register & Add Selected Items to Store Inventory</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/85 backdrop-blur-xl overflow-hidden">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.98, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.98, y: 10 }}
+        className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-[98vw] xl:max-w-[1600px] h-[95vh] flex flex-col relative overflow-hidden my-auto"
+      >
+        {/* TOP HEADER - Gradient Banner */}
+        <div className="bg-slate-900 text-white p-4 sm:p-6 flex items-center justify-between border-b border-slate-800 relative overflow-hidden shrink-0">
+          <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/90 via-purple-900/70 to-slate-900 pointer-events-none" />
+          
+          <div className="flex items-center gap-3.5 relative z-10">
+            <div className="p-3 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-600/30 flex items-center justify-center border border-indigo-400/30 shrink-0">
+              <Smartphone size={24} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2">
+                  Store Phone Models & Repair Parts Manager
+                </h2>
+                <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full hidden sm:inline-block">
+                  Full Page Workspace
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-indigo-200 font-medium mt-0.5">
+                Register store phone units & initialize matching repair spare parts across {fullCatalog.length}+ phone models
               </p>
             </div>
           </div>
@@ -510,40 +1072,46 @@ export default function AddPhoneAndPartsModal({
           <button
             onClick={onClose}
             type="button"
-            className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer relative z-10"
+            className="p-2.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-2xl transition-all cursor-pointer relative z-10 flex items-center gap-2 bg-slate-800/80 border border-slate-700"
           >
+            <span className="text-xs font-bold hidden sm:inline">Close Workspace</span>
             <X size={20} />
           </button>
         </div>
 
         {/* MODAL FORM BODY */}
-        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-5 overflow-y-auto max-h-[82vh] custom-scrollbar">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 md:p-8 space-y-5 overflow-y-auto flex-1 flex flex-col custom-scrollbar">
           
           {/* TOP MODE SWITCHER */}
-          <div className="flex items-center gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200">
+          <div className="flex items-center gap-3 p-2 bg-slate-100 rounded-2xl border border-slate-200 shrink-0">
             <button
               type="button"
               onClick={() => setEntryMode('auto_batch')}
-              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 entryMode === 'auto_batch'
                   ? 'bg-slate-900 text-white shadow-md'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
               }`}
             >
-              <Sparkles size={15} className="text-amber-400 shrink-0" />
+              <Sparkles size={16} className="text-amber-400 shrink-0" />
               <span>⚡ Automatic Quantity Entry (Model by Model)</span>
+              {totalBatchItemsCount > 0 && (
+                <span className="bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full ml-1 animate-pulse">
+                  {totalBatchItemsCount} Items Ready
+                </span>
+              )}
             </button>
 
             <button
               type="button"
               onClick={() => setEntryMode('single_model')}
-              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 entryMode === 'single_model'
                   ? 'bg-slate-900 text-white shadow-md'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
               }`}
             >
-              <Smartphone size={15} className="text-indigo-400 shrink-0" />
+              <Smartphone size={16} className="text-indigo-400 shrink-0" />
               <span>🛠 Single Model Detailed Setup</span>
             </button>
           </div>
@@ -622,7 +1190,7 @@ export default function AddPhoneAndPartsModal({
               </div>
 
               {/* MODEL BY MODEL CARDS LIST */}
-              <div className="space-y-3.5 max-h-[52vh] overflow-y-auto pr-1 custom-scrollbar">
+              <div className="space-y-4 flex-1 min-h-[420px] overflow-y-auto pr-2 custom-scrollbar">
                 {filteredCatalog.map((item) => {
                   const qty = getModelBatchQty(item.id);
                   const heroColor = item.officialColors.find(c => c.isHeroFinish)?.name || item.officialColors[0]?.name || 'Standard';
@@ -631,31 +1199,31 @@ export default function AddPhoneAndPartsModal({
                   return (
                     <div
                       key={item.id}
-                      className={`p-4 rounded-2xl border transition-all ${
+                      className={`p-4 sm:p-5 rounded-2xl border transition-all ${
                         modelTotalCount > 0
-                          ? 'bg-indigo-50/40 border-indigo-400 shadow-sm ring-1 ring-indigo-500/20'
-                          : 'bg-white border-slate-200/90 hover:border-slate-300'
+                          ? 'bg-indigo-50/50 border-indigo-400 shadow-sm ring-2 ring-indigo-500/20'
+                          : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
                       }`}
                     >
                       {/* CARD HEADER */}
-                      <div className="flex items-center justify-between flex-wrap gap-2 pb-2.5 border-b border-slate-200/80">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-white bg-slate-900 px-2.5 py-0.5 rounded-lg">
+                      <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-200/80">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-[11px] font-black uppercase tracking-wider text-white bg-slate-900 px-3 py-1 rounded-xl shadow-xs">
                             {item.brand}
                           </span>
-                          <h3 className="text-sm font-black text-slate-900">
+                          <h3 className="text-base font-black text-slate-900">
                             {item.model}
                           </h3>
-                          <span className="text-[11px] font-medium text-slate-500">
+                          <span className="text-xs font-semibold text-slate-500">
                             ({item.releaseYear})
                           </span>
                         </div>
 
                         <div className="flex items-center gap-2">
                           {/* Hero Color Badge */}
-                          <span className="text-[10px] font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <span className="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-full flex items-center gap-1.5">
                             <span
-                              className="w-2.5 h-2.5 rounded-full border border-slate-300"
+                              className="w-3 h-3 rounded-full border border-slate-300"
                               style={{ backgroundColor: item.officialColors[0]?.hex || '#64748b' }}
                             />
                             {heroColor}
@@ -665,7 +1233,7 @@ export default function AddPhoneAndPartsModal({
                           <button
                             type="button"
                             onClick={() => quickSetAllModelParts(item.id, 1)}
-                            className="text-[10px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded-lg cursor-pointer transition-all"
+                            className="text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-xl cursor-pointer transition-all active:scale-95"
                           >
                             +1 All
                           </button>
@@ -673,7 +1241,7 @@ export default function AddPhoneAndPartsModal({
                           <button
                             type="button"
                             onClick={() => updateModelBatchQty(item.id, 'battery', (qty.battery || 0) + 5)}
-                            className="text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-lg cursor-pointer transition-all"
+                            className="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-xl cursor-pointer transition-all active:scale-95"
                           >
                             +5 Batteries
                           </button>
@@ -682,7 +1250,7 @@ export default function AddPhoneAndPartsModal({
                             <button
                               type="button"
                               onClick={() => clearModelBatchQty(item.id)}
-                              className="text-[10px] font-bold text-rose-600 hover:bg-rose-50 px-2 py-0.5 rounded-lg cursor-pointer transition-all"
+                              className="text-xs font-bold text-rose-600 hover:bg-rose-50 px-2.5 py-1 rounded-xl cursor-pointer transition-all border border-transparent hover:border-rose-200"
                             >
                               Reset
                             </button>
@@ -691,7 +1259,7 @@ export default function AddPhoneAndPartsModal({
                       </div>
 
                       {/* ITEM QUANTITY INPUTS GRID */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5 pt-3.5">
                         {/* 1. Phone Units */}
                         <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
                           <div>
@@ -1219,7 +1787,7 @@ export default function AddPhoneAndPartsModal({
                 </p>
 
                 {/* SPARE PARTS GRID */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
                   {spareParts.map((part) => (
                     <div
                       key={part.id}
