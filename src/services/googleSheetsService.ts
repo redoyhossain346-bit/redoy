@@ -19,7 +19,15 @@ async function handleRes(res: Response, defaultMsg: string): Promise<Response> {
     } catch (_) {
       // fallback
     }
-    if (res.status === 401 || message.includes('invalid authentication credentials') || message.includes('Unauthenticated') || message.includes('invalid grant')) {
+    const lowerMsg = message.toLowerCase();
+    if (
+      res.status === 401 ||
+      lowerMsg.includes('invalid authentication credentials') ||
+      lowerMsg.includes('authentication credentials') ||
+      lowerMsg.includes('unauthenticated') ||
+      lowerMsg.includes('invalid grant') ||
+      lowerMsg.includes('invalid_token')
+    ) {
       clearAccessToken();
     }
     throw new Error(message);
@@ -43,8 +51,19 @@ export const googleSheetsService = {
       await handleRes(res, 'Failed to list spreadsheets');
       const data = await res.json();
       return data.files || [];
-    } catch (error) {
-      console.error('Error listing spreadsheets:', error);
+    } catch (error: any) {
+      const msg = (error?.message || '').toLowerCase();
+      if (
+        msg.includes('authentication credentials') ||
+        msg.includes('unauthenticated') ||
+        msg.includes('invalid grant') ||
+        msg.includes('invalid_token') ||
+        msg.includes('401')
+      ) {
+        console.warn('Google Sheets token expired or invalid when listing spreadsheets.');
+      } else {
+        console.error('Error listing spreadsheets:', error);
+      }
       throw error;
     }
   },
@@ -81,8 +100,19 @@ export const googleSheetsService = {
         spreadsheetId: data.spreadsheetId,
         spreadsheetUrl: data.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${data.spreadsheetId}`,
       };
-    } catch (error) {
-      console.error('Error creating spreadsheet:', error);
+    } catch (error: any) {
+      const msg = (error?.message || '').toLowerCase();
+      if (
+        msg.includes('authentication credentials') ||
+        msg.includes('unauthenticated') ||
+        msg.includes('invalid grant') ||
+        msg.includes('invalid_token') ||
+        msg.includes('401')
+      ) {
+        console.warn('Google Sheets token expired or invalid when creating spreadsheet.');
+      } else {
+        console.error('Error creating spreadsheet:', error);
+      }
       throw error;
     }
   },

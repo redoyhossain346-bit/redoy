@@ -40,7 +40,14 @@ async function handleGmailRes(res: Response, defaultMsg: string): Promise<Respon
     } catch (_) {
       // ignore
     }
-    if (res.status === 401 || message.includes('authentication credentials') || message.includes('Unauthenticated') || message.includes('invalid grant')) {
+    const lowerMsg = message.toLowerCase();
+    if (
+      res.status === 401 ||
+      lowerMsg.includes('authentication credentials') ||
+      lowerMsg.includes('unauthenticated') ||
+      lowerMsg.includes('invalid grant') ||
+      lowerMsg.includes('invalid_token')
+    ) {
       clearAccessToken();
     }
     throw new Error(message);

@@ -90,15 +90,21 @@ export default function GoogleSheetsManagerModal({
         setSelectedSpreadsheetId(files[0].id);
         localStorage.setItem('gsheets_selected_id', files[0].id);
       }
+      setStatusMessage(null);
     } catch (err: any) {
-      console.warn('Failed to load spreadsheets:', err);
-      const msg = err?.message || String(err);
-      if (msg.includes('authentication credentials') || msg.includes('401') || msg.includes('Unauthenticated') || msg.includes('invalid grant')) {
+      const msg = (err?.message || String(err)).toLowerCase();
+      if (
+        msg.includes('authentication credentials') ||
+        msg.includes('401') ||
+        msg.includes('unauthenticated') ||
+        msg.includes('invalid grant') ||
+        msg.includes('invalid_token')
+      ) {
         setToken(null);
-        setGoogleUser(null);
-        setStatusMessage({ type: 'error', text: 'Google OAuth token expired. Please click "Connect Google Sheets" to re-authenticate.' });
+        setStatusMessage({ type: 'error', text: 'Google OAuth session expired. Please click "Connect Google Sheets" to re-authenticate.' });
       } else {
-        setStatusMessage({ type: 'error', text: `Spreadsheet sync error: ${msg}` });
+        console.warn('Failed to load spreadsheets:', err);
+        setStatusMessage({ type: 'error', text: `Spreadsheet sync error: ${err?.message || err}` });
       }
     } finally {
       setLoading(false);
