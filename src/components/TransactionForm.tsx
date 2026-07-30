@@ -1,5 +1,5 @@
 import { useState, FormEvent, useEffect, useMemo } from 'react';
-import { User, Phone, PlusCircle, CreditCard, Banknote, DollarSign, Zap, Plus, X, Edit3, ArrowRight, ArrowLeft, CheckCircle2, ShoppingBag, UserCircle, Receipt, Mic, MicOff, Smartphone } from 'lucide-react';
+import { User, Phone, PlusCircle, CreditCard, Banknote, DollarSign, Zap, Plus, X, Edit3, ArrowRight, ArrowLeft, CheckCircle2, ShoppingBag, UserCircle, Receipt, Mic, MicOff, Smartphone, Package, Clock, Tag, Sparkles, AlertCircle } from 'lucide-react';
 import { Category, Transaction, TransactionType, PaymentMethod, TransactionItem, WorkStatus } from '../types';
 import { cn, toDatetimeLocalString } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -36,6 +36,8 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
   const [itemCost, setItemCost] = useState('');
   const [itemAmount, setItemAmount] = useState('');
   const [itemQuantity, setItemQuantity] = useState('1');
+  const [isItemPreOrder, setIsItemPreOrder] = useState(false);
+  const [itemAdvanceMoney, setItemAdvanceMoney] = useState('');
   const [deviceBrand, setDeviceBrand] = useState<string>('iPhone');
   const [deviceModel, setDeviceModel] = useState('');
   const [deviceQuality, setDeviceQuality] = useState<string>('');
@@ -224,6 +226,8 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
       'Camera Protector', 'Parts Sell', 'Accessories'
     ].includes(itemCategory);
 
+    const itemAdvVal = parseFloat(itemAdvanceMoney) || 0;
+
     setItems([...items, {
       id: Math.random().toString(36).substr(2, 9),
       category: itemCategory,
@@ -233,6 +237,8 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
       brand: isRepairOrPart && deviceBrand && deviceBrand !== 'None' ? deviceBrand : undefined,
       model: isRepairOrPart && deviceModel ? deviceModel : undefined,
       quality: isRepairOrPart && deviceQuality ? deviceQuality : undefined,
+      isPreOrder: isItemPreOrder,
+      advance: itemAdvVal > 0 ? itemAdvVal : undefined,
       ...(isDeviceSell ? {
         imei: deviceImei,
         storage: deviceStorage,
@@ -244,10 +250,22 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
         phoneNumber: phoneNumber
       } : {})
     }]);
+
+    if (isItemPreOrder && workStatus !== 'Pre-Order') {
+      setWorkStatus('Pre-Order');
+    }
+
+    if (itemAdvVal > 0) {
+      setIsManualAdvance(true);
+      const prevAdv = parseFloat(advance) || 0;
+      setAdvance((prevAdv + itemAdvVal).toFixed(2));
+    }
     
     setItemAmount('');
     setItemCost('');
     setItemQuantity('1');
+    setIsItemPreOrder(false);
+    setItemAdvanceMoney('');
     setDeviceModel('');
     setDeviceImei('');
     setDeviceStorage('');
@@ -475,6 +493,23 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
                       <option key={status} value={status}>{status}</option>
                     ))}
                   </select>
+                  <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                    {WORK_STATUSES.map(s => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setWorkStatus(s)}
+                        className={cn(
+                          "px-2.5 py-1 rounded-lg text-[10px] font-black transition-all border cursor-pointer uppercase",
+                          workStatus === s
+                            ? (s === 'Pre-Order' ? "bg-purple-600 text-white border-purple-700 shadow-xs" : "bg-amber-500 text-white border-amber-600 shadow-xs")
+                            : "bg-white text-slate-600 border-slate-200 hover:bg-amber-50 hover:text-amber-700"
+                        )}
+                      >
+                        {s === 'Pre-Order' ? '📦 Pre-Order' : s}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -550,6 +585,139 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
                       </span>
                     </div>
                   )}
+                </div>
+
+                {/* Pre-Order & Advance Money Bar */}
+                <div className={cn(
+                  "p-4 rounded-2xl border transition-all space-y-3 shadow-2xs",
+                  isItemPreOrder
+                    ? "bg-gradient-to-r from-purple-50 via-indigo-50 to-amber-50 border-purple-300 ring-2 ring-purple-200/60"
+                    : "bg-white border-slate-200/90 hover:border-slate-300"
+                )}>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = !isItemPreOrder;
+                          setIsItemPreOrder(next);
+                          if (next && workStatus !== 'Pre-Order') {
+                            setWorkStatus('Pre-Order');
+                          }
+                        }}
+                        className={cn(
+                          "px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer shadow-xs border",
+                          isItemPreOrder
+                            ? "bg-purple-600 text-white border-purple-700 shadow-purple-500/20 scale-[1.02]"
+                            : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200"
+                        )}
+                      >
+                        <Package size={16} className={isItemPreOrder ? "text-amber-300 animate-bounce" : "text-purple-500"} />
+                        <span>Pre-Order Option: {isItemPreOrder ? 'ENABLED' : 'OFF'}</span>
+                      </button>
+
+                      {isItemPreOrder && (
+                        <span className="text-[10px] font-black uppercase bg-purple-100 text-purple-800 px-2.5 py-1 rounded-lg border border-purple-300 flex items-center gap-1">
+                          <Clock size={12} className="text-purple-600" />
+                          <span>Status: Pre-Order</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Advance Money Input */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-1">
+                        <DollarSign size={12} className="text-emerald-600" />
+                        <span>Advance Deposit ($):</span>
+                      </span>
+                      <div className="relative w-36">
+                        <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600" />
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={itemAdvanceMoney}
+                          onChange={(e) => {
+                            setItemAdvanceMoney(e.target.value);
+                            if (parseFloat(e.target.value) > 0 && !isItemPreOrder) {
+                              setIsItemPreOrder(true);
+                              setWorkStatus('Pre-Order');
+                            }
+                          }}
+                          placeholder="0.00"
+                          className="glass-input h-10 w-full pl-7 pr-2 text-xs font-black border-emerald-300 bg-white text-emerald-700 focus:border-emerald-500 rounded-xl"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Advance Quick Presets & Live Summary */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/60">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Quick Presets:</span>
+                      <button
+                        type="button"
+                        onClick={() => setItemAdvanceMoney('0')}
+                        className="text-[9px] font-black px-2 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 cursor-pointer"
+                      >
+                        $0 Advance
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const itemTotal = (parseFloat(itemAmount) || 0) * (parseInt(itemQuantity) || 1);
+                          setItemAdvanceMoney((itemTotal / 2).toFixed(2));
+                          if (!isItemPreOrder) {
+                            setIsItemPreOrder(true);
+                            setWorkStatus('Pre-Order');
+                          }
+                        }}
+                        className="text-[9px] font-black px-2 py-1 rounded-lg bg-amber-100 border border-amber-300 text-amber-800 hover:bg-amber-200 cursor-pointer"
+                      >
+                        50% Deposit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const itemTotal = (parseFloat(itemAmount) || 0) * (parseInt(itemQuantity) || 1);
+                          setItemAdvanceMoney(itemTotal.toFixed(2));
+                          if (!isItemPreOrder) {
+                            setIsItemPreOrder(true);
+                            setWorkStatus('Pre-Order');
+                          }
+                        }}
+                        className="text-[9px] font-black px-2 py-1 rounded-lg bg-emerald-100 border border-emerald-300 text-emerald-800 hover:bg-emerald-200 cursor-pointer"
+                      >
+                        Full Advance
+                      </button>
+                      {[20, 50, 100].map(val => (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() => {
+                            setItemAdvanceMoney(val.toString());
+                            if (!isItemPreOrder) {
+                              setIsItemPreOrder(true);
+                              setWorkStatus('Pre-Order');
+                            }
+                          }}
+                          className="text-[9px] font-black px-2 py-1 rounded-lg bg-white border border-purple-200 text-purple-700 hover:bg-purple-50 cursor-pointer"
+                        >
+                          +${val}
+                        </button>
+                      ))}
+                    </div>
+
+                    {((parseFloat(itemAmount) || 0) > 0) && (
+                      <div className="text-[10px] font-black text-slate-600 flex items-center gap-2 font-mono bg-white px-2.5 py-1 rounded-lg border border-slate-200">
+                        <span>Total: ${((parseFloat(itemAmount) || 0) * (parseInt(itemQuantity) || 1)).toFixed(2)}</span>
+                        <span className="text-slate-300">•</span>
+                        <span className="text-emerald-600">Advance: ${(parseFloat(itemAdvanceMoney) || 0).toFixed(2)}</span>
+                        <span className="text-slate-300">•</span>
+                        <span className="text-rose-600">Due: ${Math.max(0, ((parseFloat(itemAmount) || 0) * (parseInt(itemQuantity) || 1)) - (parseFloat(itemAdvanceMoney) || 0)).toFixed(2)}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="flex flex-wrap sm:flex-nowrap gap-3">
                   <select
@@ -827,6 +995,22 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
                               )}
                               <span className="text-slate-500">Sell: ${item.amount.toFixed(2)} ea</span>
                             </div>
+
+                            {(item.isPreOrder || (item.advance !== undefined && item.advance > 0)) && (
+                              <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                                {item.isPreOrder && (
+                                  <span className="bg-purple-600 text-white text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-1 shadow-2xs">
+                                    <Package size={10} /> PRE-ORDER
+                                  </span>
+                                )}
+                                {item.advance !== undefined && item.advance > 0 && (
+                                  <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-black px-2 py-0.5 rounded-md font-mono flex items-center gap-1">
+                                    <DollarSign size={10} className="text-emerald-600" />
+                                    Adv Paid: ${item.advance.toFixed(2)} | Due: ${Math.max(0, itemTotalSell - item.advance).toFixed(2)}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-4">

@@ -49,6 +49,8 @@ export interface TransactionItem {
   warranty?: string;
   carrier?: string;
   phoneNumber?: string;
+  isPreOrder?: boolean;
+  advance?: number;
 }
 
 export interface Transaction {

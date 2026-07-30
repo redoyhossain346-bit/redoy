@@ -1093,6 +1093,20 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
                             {item.warranty && <div className="col-span-2 italic text-amber-600/80 leading-none">Security Warranty: {item.warranty}</div>}
                           </div>
                         )}
+                        {(item.isPreOrder || (item.advance !== undefined && item.advance > 0)) && (
+                          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                            {item.isPreOrder && (
+                              <span className="bg-purple-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                📦 PRE-ORDER
+                              </span>
+                            )}
+                            {item.advance !== undefined && item.advance > 0 && (
+                              <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[8px] font-black px-1.5 py-0.5 rounded font-mono">
+                                Adv: ${item.advance.toFixed(2)} | Due: ${Math.max(0, itemSellTotal - item.advance).toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
