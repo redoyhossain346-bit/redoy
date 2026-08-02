@@ -191,6 +191,188 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
+// AI Auto-Categorization Endpoint for TransactionForm
+app.post("/api/suggest-category", async (req, res) => {
+  try {
+    const { note = '', customerName = '', customerPhone = '', items = [] } = req.body;
+    const ai = getAI();
+
+    if (!ai) {
+      const fallback = suggestCategoryHeuristic(note, customerName, items);
+      return res.json({
+        success: true,
+        data: {
+          ...fallback,
+          isAiPowered: false
+        }
+      });
+    }
+
+    const prompt = `
+Analyze this repair shop transaction entry and suggest the best primary Category from the following list:
+['Repair', 'Accessory', 'Service', 'Screen replacement', 'Back glass', 'Other fix', 'Labor', 'Unlocking', 'Phone sell', 'Tablet Sell', 'Perfume', 'Doll', 'Case', 'Water Bottle', 'Accessories', 'Parts Sell', 'Toy sell', 'Tempered Glass', 'Battery', 'Camera Protector', 'Watch Belt', 'Watch Protector', 'Carrier sell', 'Uber', 'Income', 'Food', 'Transport', 'Rent', 'Utilities', 'Shopping', 'Others']
+
+TRANSACTION DETAILS:
+- Note / Internal Log: "${note}"
+- Customer Name: "${customerName}"
+- Customer Phone: "${customerPhone}"
+- Existing Items in Bill: ${JSON.stringify(items)}
+
+Choose the most accurate category (e.g., 'Repair' for general repairs or specific like 'Screen replacement', 'Accessory' for cases/chargers/glass, or 'Service' for software/diagnostics/labor). Also provide 2-3 relevant alternative suggestions and a brief 1-sentence explanation of why this category was selected.
+`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.6-flash",
+      contents: prompt,
+      config: {
+        systemInstruction: "You are an AI transaction categorizer for 'All Cellular & Repair Tempe'. Analyze the notes and customer text to accurately suggest whether the transaction is a 'Repair', 'Accessory', 'Service', 'Screen replacement', or other store category. Be concise and accurate.",
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            suggestedCategory: { type: Type.STRING, description: "Primary recommended category" },
+            confidence: { type: Type.NUMBER, description: "Confidence score between 0.0 and 1.0" },
+            reason: { type: Type.STRING, description: "Short 1-sentence reason for this suggestion" },
+            allSuggestions: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: "Array of 3-4 top category suggestions"
+            }
+          },
+          required: ["suggestedCategory", "confidence", "reason", "allSuggestions"]
+        }
+      }
+    });
+
+    const parsedData = JSON.parse(response.text || '{}');
+    res.json({
+      success: true,
+      data: {
+        suggestedCategory: parsedData.suggestedCategory || 'Repair',
+        confidence: parsedData.confidence ?? 0.9,
+        reason: parsedData.reason || "Analyzed from transaction notes and customer fields.",
+        allSuggestions: parsedData.allSuggestions || ['Repair', 'Accessory', 'Service'],
+        isAiPowered: true
+      }
+    });
+  } catch (error: any) {
+    console.error("Suggest Category Error:", error);
+    const { note = '', customerName = '', items = [] } = req.body;
+    const fallback = suggestCategoryHeuristic(note, customerName, items);
+    res.json({
+      success: true,
+      data: {
+        ...fallback,
+        isAiPowered: false,
+        error: error.message
+      }
+    });
+  }
+});
+
+// Heuristic fallback function for category suggestion
+function suggestCategoryHeuristic(note: string = '', customerName: string = '', items: any[] = []): {
+  suggestedCategory: string;
+  confidence: number;
+  reason: string;
+  allSuggestions: string[];
+} {
+  const text = `${note} ${customerName} ${(items || []).map(i => `${i.category || ''} ${i.brand || ''} ${i.model || ''}`).join(' ')}`.toLowerCase().trim();
+
+  // Keyword matching
+  if (/\b(screen|lcd|display|glass|crack|touch|digitizer|oled|battery|charge|port|speaker|camera|back glass|fix|repair|broken|water damage|unlock|unlocking|sim)\b/i.test(text)) {
+    if (/\b(screen|lcd|display|digitizer|oled)\b/i.test(text)) {
+      return {
+        suggestedCategory: 'Screen replacement',
+        confidence: 0.94,
+        reason: "Detected keywords ('screen' / display repair) in notes or customer details.",
+        allSuggestions: ['Screen replacement', 'Repair', 'Other fix', 'Back glass']
+      };
+    }
+    if (/\b(back glass)\b/i.test(text)) {
+      return {
+        suggestedCategory: 'Back glass',
+        confidence: 0.93,
+        reason: "Detected keywords ('back glass') in notes or customer details.",
+        allSuggestions: ['Back glass', 'Repair', 'Other fix']
+      };
+    }
+    if (/\b(unlock|sim|network)\b/i.test(text)) {
+      return {
+        suggestedCategory: 'Unlocking',
+        confidence: 0.91,
+        reason: "Detected unlocking or network carrier keywords.",
+        allSuggestions: ['Unlocking', 'Service', 'Carrier sell']
+      };
+    }
+    return {
+      suggestedCategory: 'Repair',
+      confidence: 0.92,
+      reason: "Detected device hardware fix or repair terms in notes or customer details.",
+      allSuggestions: ['Repair', 'Other fix', 'Service', 'Labor']
+    };
+  }
+
+  if (/\b(case|cover|protector|tempered|charger|cable|adapter|plug|earphone|headphone|airpod|belt|watch|accessory|accessories|bottle|perfume|doll|toy)\b/i.test(text)) {
+    if (/\b(tempered|screen protector)\b/i.test(text)) {
+      return {
+        suggestedCategory: 'Tempered Glass',
+        confidence: 0.92,
+        reason: "Detected tempered glass / protector keyword.",
+        allSuggestions: ['Tempered Glass', 'Accessory', 'Accessories']
+      };
+    }
+    if (/\b(case|cover)\b/i.test(text)) {
+      return {
+        suggestedCategory: 'Case',
+        confidence: 0.91,
+        reason: "Detected phone case / protective cover keyword.",
+        allSuggestions: ['Case', 'Accessory', 'Accessories']
+      };
+    }
+    return {
+      suggestedCategory: 'Accessory',
+      confidence: 0.90,
+      reason: "Detected accessory or retail add-on keywords in notes or customer details.",
+      allSuggestions: ['Accessory', 'Accessories', 'Case', 'Tempered Glass']
+    };
+  }
+
+  if (/\b(service|labor|fee|diagnostic|check|clean|software|update|backup|install|transfer|setup)\b/i.test(text)) {
+    return {
+      suggestedCategory: 'Service',
+      confidence: 0.89,
+      reason: "Detected service, diagnostic, or labor keywords in notes.",
+      allSuggestions: ['Service', 'Labor', 'Repair', 'Other fix']
+    };
+  }
+
+  if (/\b(sell|sold|purchase|bought|iphone|samsung|ipad|tablet|macbook|laptop|phone)\b/i.test(text)) {
+    if (/\b(ipad|tablet)\b/i.test(text)) {
+      return {
+        suggestedCategory: 'Tablet Sell',
+        confidence: 0.88,
+        reason: "Detected tablet / iPad transaction in notes.",
+        allSuggestions: ['Tablet Sell', 'Phone sell', 'Income']
+      };
+    }
+    return {
+      suggestedCategory: 'Phone sell',
+      confidence: 0.88,
+      reason: "Detected mobile device sale or trade-in keywords.",
+      allSuggestions: ['Phone sell', 'Tablet Sell', 'Income']
+    };
+  }
+
+  // Default fallback
+  return {
+    suggestedCategory: 'Repair',
+    confidence: 0.75,
+    reason: "Default recommendation based on standard repair shop transaction activity.",
+    allSuggestions: ['Repair', 'Accessory', 'Service', 'Screen replacement']
+  };
+}
+
 // Heuristic fallback function for restock alerts
 function generateHeuristicRestockAlerts(inventory: any[], usageHistory: any[], transactions: any[]) {
   const alerts: any[] = [];

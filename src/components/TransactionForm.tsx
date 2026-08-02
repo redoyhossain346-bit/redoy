@@ -1,6 +1,6 @@
 import { useState, FormEvent, useEffect, useMemo } from 'react';
-import { User, Phone, PlusCircle, CreditCard, Banknote, DollarSign, Zap, Plus, X, Edit3, ArrowRight, ArrowLeft, CheckCircle2, ShoppingBag, UserCircle, Receipt, Mic, MicOff, Smartphone, Package, Clock, Tag, Sparkles, AlertCircle } from 'lucide-react';
-import { Category, Transaction, TransactionType, PaymentMethod, TransactionItem, WorkStatus } from '../types';
+import { User, Phone, PlusCircle, CreditCard, Banknote, DollarSign, Zap, Plus, X, Edit3, ArrowRight, ArrowLeft, CheckCircle2, ShoppingBag, UserCircle, Receipt, Mic, MicOff, Smartphone, Package, Clock, Tag, Sparkles, AlertCircle, ClipboardCheck, CheckSquare, Square, RotateCcw, Wrench } from 'lucide-react';
+import { Category, Transaction, TransactionType, PaymentMethod, TransactionItem, WorkStatus, RepairChecklistItem, STANDARD_REPAIR_CHECKLIST } from '../types';
 import { cn, toDatetimeLocalString } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { DEVICE_BRANDS, QUALITY_OPTIONS } from '../data/deviceModels';
@@ -14,7 +14,7 @@ interface TransactionFormProps {
 }
 
 const CATEGORIES: Category[] = [
-  'Screen replacement', 'Back glass', 'Other fix', 'Labor', 'Unlocking', 'Phone sell', 'Tablet Sell', 
+  'Repair', 'Accessory', 'Service', 'Screen replacement', 'Back glass', 'Other fix', 'Labor', 'Unlocking', 'Phone sell', 'Tablet Sell', 
   'Perfume', 'Doll', 'Case', 'Water Bottle', 'Accessories', 'Parts Sell', 'Toy sell',
   'Tempered Glass', 'Battery', 'Camera Protector', 'Watch Belt', 'Watch Protector',
   'Carrier sell', 'Uber', 'Income', 'Food', 'Transport', 'Rent', 'Utilities', 'Shopping', 'Others'
@@ -33,6 +33,15 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
   const [type, setType] = useState<TransactionType>('income');
   const [items, setItems] = useState<TransactionItem[]>([]);
   const [itemCategory, setItemCategory] = useState<Category>('Screen replacement');
+  const [aiSuggestedCategory, setAiSuggestedCategory] = useState<{
+    category: Category;
+    confidence: number;
+    reason: string;
+    allSuggestions: Category[];
+    isAiPowered: boolean;
+  } | null>(null);
+  const [isAnalyzingCategory, setIsAnalyzingCategory] = useState(false);
+  const [hasManuallyOverriddenCategory, setHasManuallyOverriddenCategory] = useState(false);
   const [itemCost, setItemCost] = useState('');
   const [itemAmount, setItemAmount] = useState('');
   const [itemQuantity, setItemQuantity] = useState('1');
@@ -72,6 +81,9 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
   const [note, setNote] = useState('');
   const [date, setDate] = useState(toDatetimeLocalString());
   const [isListening, setIsListening] = useState(false);
+  const [repairChecklist, setRepairChecklist] = useState<RepairChecklistItem[]>(STANDARD_REPAIR_CHECKLIST);
+  const [newChecklistLabel, setNewChecklistLabel] = useState('');
+  const [showChecklist, setShowChecklist] = useState(true);
 
   const toggleListening = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -135,6 +147,37 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
     }
   };
 
+  const toggleChecklistItem = (id: string) => {
+    setRepairChecklist(prev =>
+      prev.map(item => item.id === id ? { ...item, checked: !item.checked } : item)
+    );
+  };
+
+  const addChecklistItem = () => {
+    if (!newChecklistLabel.trim()) return;
+    const newItem: RepairChecklistItem = {
+      id: `custom_${Date.now()}`,
+      label: newChecklistLabel.trim(),
+      checked: false
+    };
+    setRepairChecklist(prev => [...prev, newItem]);
+    setNewChecklistLabel('');
+  };
+
+  const removeChecklistItem = (id: string) => {
+    setRepairChecklist(prev => prev.filter(item => item.id !== id));
+  };
+
+  const resetChecklist = () => {
+    setRepairChecklist(STANDARD_REPAIR_CHECKLIST);
+  };
+
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem('pos_tx_form_draft_v1');
+    } catch (e) {}
+  };
+
   useEffect(() => {
     if (editingTransaction) {
       setIsManualAdvance(true);
@@ -160,12 +203,258 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
       setIdType(editingTransaction.customer?.idType || '');
       setIdNumber(editingTransaction.customer?.idNumber || '');
       setShowCustomer(!!editingTransaction.customer);
+      setRepairChecklist(editingTransaction.repairChecklist || STANDARD_REPAIR_CHECKLIST);
       // Reset to first step on edit
       setCurrentStep('Basics');
     } else {
       setIsManualAdvance(false);
+      try {
+        const savedDraft = localStorage.getItem('pos_tx_form_draft_v1');
+        if (savedDraft) {
+          const draft = JSON.parse(savedDraft);
+          if (draft.repairChecklist) setRepairChecklist(draft.repairChecklist);
+          if (draft.note) setNote(draft.note);
+          if (draft.workStatus) setWorkStatus(draft.workStatus);
+          if (draft.items && draft.items.length > 0) setItems(draft.items);
+          if (draft.customerName) {
+            setCustomerName(draft.customerName);
+            setShowCustomer(true);
+          }
+          if (draft.customerPhone) setCustomerPhone(draft.customerPhone);
+          if (draft.customerEmail) setCustomerEmail(draft.customerEmail);
+        }
+      } catch (err) {
+        console.error('Failed to load transaction draft', err);
+      }
     }
   }, [editingTransaction]);
+
+  // Auto-save form draft whenever key fields change (when creating new transaction)
+  useEffect(() => {
+    if (editingTransaction) return;
+    try {
+      const draft = {
+        repairChecklist,
+        note,
+        workStatus,
+        items,
+        customerName,
+        customerPhone,
+        customerEmail,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('pos_tx_form_draft_v1', JSON.stringify(draft));
+    } catch (err) {
+      console.error('Failed to auto-save transaction draft', err);
+    }
+  }, [editingTransaction, repairChecklist, note, workStatus, items, customerName, customerPhone, customerEmail]);
+
+  // AI-powered auto-categorization based on notes or customer fields
+  const analyzeCategory = async (customNote?: string, customName?: string) => {
+    const noteText = customNote !== undefined ? customNote : note;
+    const nameText = customName !== undefined ? customName : customerName;
+
+    if (!noteText.trim() && !nameText.trim()) {
+      return;
+    }
+
+    setIsAnalyzingCategory(true);
+    try {
+      const response = await fetch('/api/suggest-category', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          note: noteText,
+          customerName: nameText,
+          customerPhone,
+          items
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to analyze category');
+      }
+
+      const resJson = await response.json();
+      if (resJson.success && resJson.data) {
+        const result = {
+          category: (resJson.data.suggestedCategory || 'Repair') as Category,
+          confidence: resJson.data.confidence ?? 0.92,
+          reason: resJson.data.reason || 'Analyzed from notes & customer fields',
+          allSuggestions: (resJson.data.allSuggestions || ['Repair', 'Accessory', 'Service']) as Category[],
+          isAiPowered: !!resJson.data.isAiPowered
+        };
+        setAiSuggestedCategory(result);
+
+        // Auto-apply suggested category if user hasn't manually overridden it
+        if (!hasManuallyOverriddenCategory) {
+          setItemCategory(result.category);
+        }
+      }
+    } catch (err) {
+      console.error('AI Categorization Error:', err);
+    } finally {
+      setIsAnalyzingCategory(false);
+    }
+  };
+
+  useEffect(() => {
+    const textLen = (note || '').trim().length + (customerName || '').trim().length;
+    if (textLen < 3) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      analyzeCategory(note, customerName);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [note, customerName]);
+
+  const renderAICategoryBanner = () => {
+    if (isAnalyzingCategory) {
+      return (
+        <div className="bg-gradient-to-r from-indigo-50 via-amber-50 to-indigo-50 p-4 rounded-2xl border border-indigo-200/60 shadow-xs flex items-center justify-between gap-3 animate-pulse">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
+              <Sparkles size={16} className="animate-spin" />
+            </div>
+            <div>
+              <p className="text-xs font-black text-indigo-950 uppercase tracking-wider">
+                AI Categorization Active
+              </p>
+              <p className="text-[11px] font-medium text-slate-600 mt-0.5">
+                Analyzing notes & customer info to suggest the best store category...
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (!aiSuggestedCategory) {
+      return (
+        <div className="bg-slate-50 hover:bg-amber-50/50 p-3.5 rounded-2xl border border-slate-200 hover:border-amber-300 transition-all flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-700 flex items-center justify-center shrink-0">
+              <Sparkles size={16} />
+            </div>
+            <div>
+              <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                AI Auto-Categorization Ready
+              </span>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Type in Internal Note or Customer Name to automatically suggest category ('Repair', 'Accessory', 'Service')
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => analyzeCategory()}
+            className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black uppercase tracking-wider transition-all shadow-xs shrink-0 cursor-pointer flex items-center gap-1.5"
+          >
+            <Sparkles size={14} />
+            Auto-Categorize Now
+          </button>
+        </div>
+      );
+    }
+
+    const isCurrentActive = itemCategory === aiSuggestedCategory.category;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-white p-4 rounded-2xl border border-amber-500/30 shadow-xs space-y-3"
+      >
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <Sparkles size={16} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                  AI Suggested Category: <span className="text-amber-700 underline decoration-amber-400">{aiSuggestedCategory.category}</span>
+                </span>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+                  {aiSuggestedCategory.isAiPowered ? "⚡ Gemini AI" : "✨ Smart Rule"} ({Math.round(aiSuggestedCategory.confidence * 100)}% Match)
+                </span>
+              </div>
+              <p className="text-[11px] font-medium text-slate-600 mt-0.5">{aiSuggestedCategory.reason}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {!isCurrentActive ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setItemCategory(aiSuggestedCategory.category);
+                  setHasManuallyOverriddenCategory(false);
+                }}
+                className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black uppercase tracking-wider transition-all shadow-sm cursor-pointer flex items-center gap-1.5"
+              >
+                <CheckCircle2 size={14} />
+                Apply '{aiSuggestedCategory.category}'
+              </button>
+            ) : (
+              <span className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-[11px] font-black uppercase tracking-wider shadow-xs flex items-center gap-1.5">
+                <CheckCircle2 size={14} />
+                Selected: {aiSuggestedCategory.category}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => analyzeCategory()}
+              title="Re-analyze note and customer details"
+              className="p-2 rounded-xl bg-white hover:bg-amber-100 text-slate-600 hover:text-amber-700 border border-slate-200 transition-all cursor-pointer"
+            >
+              <RotateCcw size={14} />
+            </button>
+          </div>
+        </div>
+
+        {/* Alternative suggestions pills & update existing items */}
+        <div className="flex items-center justify-between flex-wrap gap-2 pt-2 border-t border-amber-500/10">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10px] font-bold text-slate-500 uppercase">Suggested Alternatives:</span>
+            {aiSuggestedCategory.allSuggestions
+              .filter((c: string) => c !== aiSuggestedCategory.category)
+              .slice(0, 4)
+              .map((cat: Category) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => {
+                    setItemCategory(cat);
+                    setHasManuallyOverriddenCategory(true);
+                  }}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-[10px] font-black transition-all border cursor-pointer uppercase",
+                    itemCategory === cat
+                      ? "bg-amber-500 text-white border-amber-600 shadow-2xs"
+                      : "bg-white text-slate-700 border-slate-200 hover:bg-amber-50 hover:border-amber-300"
+                  )}
+                >
+                  + {cat}
+                </button>
+              ))}
+          </div>
+
+          {items.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setItems(prev => prev.map(item => ({ ...item, category: aiSuggestedCategory.category })));
+              }}
+              className="text-[11px] font-black text-amber-700 hover:text-amber-800 underline cursor-pointer transition-all"
+            >
+              Apply '{aiSuggestedCategory.category}' to all {items.length} item(s) in bill
+            </button>
+          )}
+        </div>
+      </motion.div>
+    );
+  };
 
   // Calculations
   const sVal = useMemo(() => items.reduce((acc, curr) => acc + (curr.amount * curr.quantity), 0), [items]);
@@ -318,6 +607,7 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
         idNumber
       } : undefined,
       note,
+      repairChecklist,
       date: date || new Date().toISOString(),
       createdAt: editingTransaction?.createdAt || new Date().toISOString()
     });
@@ -340,6 +630,8 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
     setWarranty('');
     setIdType('');
     setIdNumber('');
+    setRepairChecklist(STANDARD_REPAIR_CHECKLIST);
+    clearDraft();
     setCurrentStep('Basics');
   };
 
@@ -557,6 +849,84 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
                       Live Mic Active
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* Diagnostic & Repair Checklist (Auto-Save Enabled) */}
+              <div className="bg-slate-50/80 p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3.5">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <Wrench size={16} className="text-amber-600" />
+                    <span className="text-xs font-black uppercase tracking-widest text-slate-800">Diagnostic & Repair Checklist</span>
+                    <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Auto-Save Enabled
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-slate-600 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
+                      {repairChecklist.filter(i => i.checked).length} / {repairChecklist.length} Completed
+                    </span>
+                    <button
+                      type="button"
+                      onClick={resetChecklist}
+                      className="text-[10px] font-black text-slate-500 hover:text-rose-600 uppercase tracking-wider px-2 py-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer flex items-center gap-1"
+                      title="Reset all checks to default"
+                    >
+                      <RotateCcw size={11} /> Reset
+                    </button>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Mark off diagnostic checks as you complete repairs. Progress is auto-saved automatically.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">
+                  {repairChecklist.map(item => (
+                    <div
+                      key={item.id}
+                      onClick={() => toggleChecklistItem(item.id)}
+                      className={cn(
+                        "flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition-all",
+                        item.checked ? "bg-emerald-50/80 border-emerald-300 text-emerald-950 font-bold" : "bg-white border-slate-200 text-slate-700 hover:border-slate-300"
+                      )}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        {item.checked ? (
+                          <CheckSquare size={16} className="text-emerald-600 shrink-0" />
+                        ) : (
+                          <Square size={16} className="text-slate-400 shrink-0" />
+                        )}
+                        <span className={cn("text-xs", item.checked && "line-through text-slate-500")}>{item.label}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); removeChecklistItem(item.id); }}
+                        className="text-slate-300 hover:text-rose-500 p-1 transition-colors cursor-pointer"
+                        title="Remove diagnostic step"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
+                  <input
+                    type="text"
+                    value={newChecklistLabel}
+                    onChange={(e) => setNewChecklistLabel(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addChecklistItem(); } }}
+                    placeholder="Add custom diagnostic test step..."
+                    className="flex-1 px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-amber-500 font-medium text-slate-800"
+                  />
+                  <button
+                    type="button"
+                    onClick={addChecklistItem}
+                    className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-black rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <Plus size={13} /> Add Step
+                  </button>
                 </div>
               </div>
             </div>

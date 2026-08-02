@@ -161,4 +161,72 @@ export const localStorageService = {
     saveToLocal(STORAGE_KEYS.TAX_RATE, taxRate);
     return Promise.resolve();
   },
+
+  // Full Database Export & Import
+  exportFullDatabase: () => {
+    return {
+      version: "1.0",
+      exportedAt: new Date().toISOString(),
+      transactions: getFromLocal<Transaction[]>(STORAGE_KEYS.TRANSACTIONS, []),
+      inventory: getFromLocal<InventoryItem[]>(STORAGE_KEYS.INVENTORY, []),
+      workHours: getFromLocal<WorkHour[]>(STORAGE_KEYS.WORK_HOURS, []),
+      partUsage: getFromLocal<PartUsage[]>(STORAGE_KEYS.PART_USAGE, []),
+      categories: getFromLocal<string[]>(STORAGE_KEYS.CATEGORIES, ['Screens', 'Batteries', 'Charging Ports', 'Cameras', 'Back Glass', 'Accessories']),
+      taxRate: getFromLocal<number>(STORAGE_KEYS.TAX_RATE, 0.081),
+      userProfile: getFromLocal<any>(STORAGE_KEYS.USER_DATA, null),
+    };
+  },
+
+  importFullDatabase: (data: any): { success: boolean; message: string; counts?: { transactions: number; inventory: number; workHours: number; partUsage: number } } => {
+    try {
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid JSON backup format: file content is not a valid JSON object.');
+      }
+
+      const counts = {
+        transactions: 0,
+        inventory: 0,
+        workHours: 0,
+        partUsage: 0,
+      };
+
+      if (Array.isArray(data.transactions)) {
+        saveToLocal(STORAGE_KEYS.TRANSACTIONS, data.transactions);
+        counts.transactions = data.transactions.length;
+      }
+      if (Array.isArray(data.inventory)) {
+        saveToLocal(STORAGE_KEYS.INVENTORY, data.inventory);
+        counts.inventory = data.inventory.length;
+      }
+      if (Array.isArray(data.workHours)) {
+        saveToLocal(STORAGE_KEYS.WORK_HOURS, data.workHours);
+        counts.workHours = data.workHours.length;
+      }
+      if (Array.isArray(data.partUsage)) {
+        saveToLocal(STORAGE_KEYS.PART_USAGE, data.partUsage);
+        counts.partUsage = data.partUsage.length;
+      }
+      if (Array.isArray(data.categories)) {
+        saveToLocal(STORAGE_KEYS.CATEGORIES, data.categories);
+      }
+      if (typeof data.taxRate === 'number') {
+        saveToLocal(STORAGE_KEYS.TAX_RATE, data.taxRate);
+      }
+      if (data.userProfile && typeof data.userProfile === 'object') {
+        saveToLocal(STORAGE_KEYS.USER_DATA, data.userProfile);
+      }
+
+      return {
+        success: true,
+        message: `Database restored successfully (${counts.transactions} sales, ${counts.inventory} inventory items, ${counts.workHours} work hours entries).`,
+        counts
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err?.message || 'Failed to import backup file.'
+      };
+    }
+  },
 };
+

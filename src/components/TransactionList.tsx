@@ -1,19 +1,22 @@
 import { useMemo, useState } from 'react';
-import { FileSpreadsheet, FileText, Trash2, Utensils, Car, Home, Zap, Heart, ShoppingBag, Box, DollarSign, Wallet, Smartphone, Layers, Wrench, Hammer, Unlock, Store, Gamepad, Banknote, CreditCard, User, Phone, Mail, ShieldCheck, Fingerprint, Hash, Tablet, Sparkles, ToyBrick, Package, Watch, Cpu, ChevronDown } from 'lucide-react';
-import { Transaction, WorkHour } from '../types';
+import { FileSpreadsheet, FileText, Trash2, Utensils, Car, Home, Zap, Heart, ShoppingBag, Box, DollarSign, Wallet, Smartphone, Layers, Wrench, Hammer, Unlock, Store, Gamepad, Banknote, CreditCard, User, Phone, Mail, ShieldCheck, Fingerprint, Hash, Tablet, Sparkles, ToyBrick, Package, Watch, Cpu, ChevronDown, Search, X, CheckSquare, Square } from 'lucide-react';
+import { Transaction, WorkHour, STANDARD_REPAIR_CHECKLIST } from '../types';
 import { formatCurrency, cn, formatTransactionId, formatTxDateTime, format12Hour, formatDateSafe } from '../lib/utils';
 import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { motion, AnimatePresence } from 'motion/react';
+import CustomerHistoryModal from './CustomerHistoryModal';
 
 interface TransactionListProps {
   transactions: Transaction[];
+  allTransactions?: Transaction[];
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
   onExportAudit?: () => void;
   workHours?: WorkHour[];
+  onUpdateTransaction?: (updated: Transaction) => void;
 }
 
 const CATEGORY_ICONS: Record<string, any> = {
@@ -24,6 +27,9 @@ const CATEGORY_ICONS: Record<string, any> = {
   Utilities: <Zap size={16} />,
   Shopping: <ShoppingBag size={16} />,
   Income: <DollarSign size={16} />,
+  Repair: <Wrench size={16} />,
+  Accessory: <Watch size={16} />,
+  Service: <Wrench size={16} />,
   'Screen replacement': <Smartphone size={16} />,
   'Back glass': <Layers size={16} />,
   'Other fix': <Wrench size={16} />,
@@ -46,8 +52,27 @@ const CATEGORY_ICONS: Record<string, any> = {
   Others: <Wallet size={16} />,
 };
 
-export default function TransactionList({ transactions, onDelete, onEdit, onExportAudit, workHours = [] }: TransactionListProps) {
+export default function TransactionList({ transactions, allTransactions, onDelete, onEdit, onExportAudit, workHours = [], onUpdateTransaction }: TransactionListProps) {
   const [showExportOptions, setShowExportOptions] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchAllTime, setSearchAllTime] = useState(true);
+  const [selectedCustomerForHistory, setSelectedCustomerForHistory] = useState<string | null>(null);
+
+  const handleToggleChecklist = (tx: Transaction, itemId: string) => {
+    const checklist = tx.repairChecklist || STANDARD_REPAIR_CHECKLIST;
+    const updatedChecklist = checklist.map(item =>
+      item.id === itemId ? { ...item, checked: !item.checked } : item
+    );
+    const updatedTx = {
+      ...tx,
+      repairChecklist: updatedChecklist,
+      updatedAt: new Date().toISOString()
+    };
+    if (onUpdateTransaction) {
+      onUpdateTransaction(updatedTx);
+    }
+  };
+
   const [exportFilters, setExportFilters] = useState({
     startDate: '',
     endDate: '',
@@ -97,7 +122,9 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
         if (i.phoneNumber) details += ` | Num:${i.phoneNumber}`;
         return details;
       }).join('; ') || t.category,
-      Method: t.paymentSplit ? 'SPLIT' : t.paymentMethod,
+      Method: t.paymentSplit
+        ? `SPLIT (Cash: ${t.paymentSplit.cash || 0} / Card: ${t.paymentSplit.card || 0} / Zelle: ${t.paymentSplit.zelle || 0})`
+        : t.paymentMethod,
       Cash: t.paymentSplit?.cash || (t.paymentMethod === 'CASH' ? t.amount : 0),
       Card: t.paymentSplit?.card || (t.paymentMethod === 'CARD' ? t.amount : 0),
       Zelle: t.paymentSplit?.zelle || (t.paymentMethod === 'ZELLE' ? t.amount : 0),
@@ -624,17 +651,27 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
         formatTransactionId(t.id, index),
         formatTxDateTime(t.date, t.createdAt),
         t.type.toUpperCase(),
-        t.items?.map(i => {
-          let str = i.category;
-          if (i.cost !== undefined && i.cost > 0) str += ` [Cost:$${i.cost}]`;
-          if (i.model) str += ` (${i.model})`;
-          if (i.carrier) str += ` (${i.carrier})`;
-          if (i.phoneNumber) str += ` [#:${i.phoneNumber}]`;
-          if (i.imei) str += ` [EMI:${i.imei}]`;
-          return str;
-        }).join(', ') || t.category,
+        (() => {
+          let catStr = t.items?.map(i => {
+            let str = i.category;
+            if (i.cost !== undefined && i.cost > 0) str += ` [Cost:$${i.cost}]`;
+            if (i.model) str += ` (${i.model})`;
+            if (i.carrier) str += ` (${i.carrier})`;
+            if (i.phoneNumber) str += ` [#:${i.phoneNumber}]`;
+            if (i.imei) str += ` [EMI:${i.imei}]`;
+            if (i.isPreOrder) str += ` [PRE-ORDER]`;
+            if (i.advance && i.advance > 0) str += ` [Adv:$${i.advance}]`;
+            return str;
+          }).join(', ') || t.category;
+          if (t.advance && t.advance > 0) {
+            catStr += ` | Adv Deposit: ${formatCurrency(t.advance)}`;
+          }
+          return catStr;
+        })(),
         t.workStatus || '-',
-        t.paymentSplit ? 'SPLIT' : t.paymentMethod,
+        t.paymentSplit
+          ? `SPLIT (Cash: ${formatCurrency(t.paymentSplit.cash || 0)} | Card: ${formatCurrency(t.paymentSplit.card || 0)} | Zelle: ${formatCurrency(t.paymentSplit.zelle || 0)})`
+          : t.paymentMethod,
         formatCurrency(t.amount),
         txCost > 0 ? formatCurrency(txCost) : '-',
         (t.type === 'income' && txCost > 0) ? formatCurrency(txProfit) : (t.type === 'income' ? formatCurrency(t.amount) : '-'),
@@ -715,29 +752,38 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
 
     let pdfCashIncome = 0;
     let pdfCardIncome = 0;
+    let pdfZelleIncome = 0;
     let pdfCashRefund = 0;
     let pdfCardRefund = 0;
+    let pdfZelleRefund = 0;
 
     dataToExport.forEach(t => {
       let cashVal = 0;
       let cardVal = 0;
+      let zelleVal = 0;
 
       if (t.paymentSplit) {
         cashVal = Number(t.paymentSplit.cash || 0);
         cardVal = Number(t.paymentSplit.card || 0);
+        zelleVal = Number(t.paymentSplit.zelle || 0);
       } else {
         if (t.paymentMethod === 'CASH') cashVal = Number(t.amount || 0);
         else if (t.paymentMethod === 'CARD') cardVal = Number(t.amount || 0);
+        else if (t.paymentMethod === 'ZELLE') zelleVal = Number(t.amount || 0);
       }
 
       if (t.type === 'income') {
         pdfCashIncome += cashVal;
         pdfCardIncome += cardVal;
+        pdfZelleIncome += zelleVal;
       } else if (t.type === 'refund') {
         pdfCashRefund += cashVal;
         pdfCardRefund += cardVal;
+        pdfZelleRefund += zelleVal;
       }
     });
+
+    const totalAdvance = dataToExport.reduce((sum, t) => sum + (t.advance || 0), 0);
 
     const finalY = (doc as any).lastAutoTable?.finalY || 100;
     const summaryStartY = Math.min(finalY + 10, pageHeight - 180);
@@ -751,13 +797,16 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
       head: [['Financial Metric Overview', 'Amount ($)']],
       body: [
         ['Total Gross Sales / Income (+)', formatCurrency(totalIncome)],
-        ['  • Cash Sales', formatCurrency(pdfCashIncome)],
-        ['  • Card Sales', formatCurrency(pdfCardIncome)],
+        ['  • Cash Sales (Inc. Split)', formatCurrency(pdfCashIncome)],
+        ['  • Card Sales (Inc. Split)', formatCurrency(pdfCardIncome)],
+        ['  • Zelle Sales (Inc. Split)', formatCurrency(pdfZelleIncome)],
         ['Total Items / Products Cost (-)', formatCurrency(pdfTotalCost)],
         ['Total Business Expenses (-)', formatCurrency(totalExpense)],
         ['Total Customer Refunds (-)', formatCurrency(totalRefund)],
         ['  • Cash Refund', formatCurrency(pdfCashRefund)],
         ['  • Card Refund', formatCurrency(pdfCardRefund)],
+        ['  • Zelle Refund', formatCurrency(pdfZelleRefund)],
+        ['Total Advance Deposits Collected', formatCurrency(totalAdvance)],
         ['Net Profit / Money Made', formatCurrency(netProfit)],
         ['Total Outstanding Balance Due', formatCurrency(totalDue)]
       ],
@@ -767,22 +816,25 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
       didParseCell: (data) => {
         if (data.section === 'body') {
           const rowIndex = data.row.index;
-          if (rowIndex === 0 || rowIndex === 1 || rowIndex === 2) {
+          if (rowIndex >= 0 && rowIndex <= 3) {
             data.cell.styles.fillColor = [236, 253, 245];
             data.cell.styles.textColor = [4, 120, 87];
-          } else if (rowIndex === 3) {
-            data.cell.styles.fillColor = [255, 241, 242];
-            data.cell.styles.textColor = [225, 29, 72];
           } else if (rowIndex === 4) {
             data.cell.styles.fillColor = [255, 241, 242];
+            data.cell.styles.textColor = [225, 29, 72];
+          } else if (rowIndex === 5) {
+            data.cell.styles.fillColor = [255, 241, 242];
             data.cell.styles.textColor = [190, 18, 60];
-          } else if (rowIndex === 5 || rowIndex === 6 || rowIndex === 7) {
+          } else if (rowIndex >= 6 && rowIndex <= 9) {
             data.cell.styles.fillColor = [254, 242, 242];
             data.cell.styles.textColor = [220, 38, 38];
-          } else if (rowIndex === 8) {
+          } else if (rowIndex === 10) {
+            data.cell.styles.fillColor = [243, 232, 255];
+            data.cell.styles.textColor = [126, 34, 206];
+          } else if (rowIndex === 11) {
             data.cell.styles.fillColor = [220, 252, 231];
             data.cell.styles.textColor = [22, 101, 52];
-          } else if (rowIndex === 9) {
+          } else if (rowIndex === 12) {
             data.cell.styles.fillColor = [254, 242, 242];
             data.cell.styles.textColor = [220, 38, 38];
           }
@@ -861,8 +913,23 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
   };
 
   const sortedTransactions = useMemo(() => {
-    return [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [transactions]);
+    const source = (searchQuery.trim() && searchAllTime && allTransactions) ? allTransactions : transactions;
+    return [...source]
+      .filter(t => {
+        if (!searchQuery.trim()) return true;
+        const q = searchQuery.toLowerCase().trim();
+        const customerName = t.customer?.name?.toLowerCase() || '';
+        const customerPhone = t.customer?.phone?.toLowerCase() || '';
+        const note = t.note?.toLowerCase() || '';
+        const itemsMatch = t.items?.some(i => 
+          i.phoneNumber?.toLowerCase().includes(q) || 
+          i.imei?.toLowerCase().includes(q) || 
+          i.model?.toLowerCase().includes(q)
+        ) || false;
+        return customerName.includes(q) || customerPhone.includes(q) || note.includes(q) || itemsMatch;
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [transactions, allTransactions, searchQuery, searchAllTime]);
 
   return (
     <div className="glass-card p-6 h-full flex flex-col bg-white border-slate-200 shadow-sm">
@@ -893,6 +960,44 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
             )}
           </div>
         </div>
+
+        {/* Search Bar for filtering by customer name, phone number, or notes */}
+        <div className="relative">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search transactions by customer name, phone number, or notes..."
+            className="w-full pl-10 pr-9 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-amber-500 focus:bg-white transition-all shadow-2xs"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              title="Clear search"
+            >
+              <X size={15} />
+            </button>
+          )}
+        </div>
+
+        {searchQuery && allTransactions && (
+          <div className="flex items-center justify-between bg-amber-50 border border-amber-200 px-3.5 py-2 rounded-xl text-xs font-bold text-amber-900 shadow-2xs">
+            <span>
+              {searchAllTime 
+                ? `Searching across All-Time History (${allTransactions.length} total records)` 
+                : `Searching only within current date view (${transactions.length} records)`}
+            </span>
+            <button
+              type="button"
+              onClick={() => setSearchAllTime(!searchAllTime)}
+              className="underline font-black hover:text-amber-700 cursor-pointer ml-2"
+            >
+              {searchAllTime ? "Search Current View Only" : "Search All-Time History"}
+            </button>
+          </div>
+        )}
 
         <AnimatePresence>
           {showExportOptions && (
@@ -963,7 +1068,9 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
         {sortedTransactions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
             <Box size={32} className="mb-2 opacity-20" />
-            <p className="text-xs font-black uppercase tracking-widest">Global Log empty</p>
+            <p className="text-xs font-black uppercase tracking-widest">
+              {searchQuery ? "No transactions found matching search" : "Global Log empty"}
+            </p>
           </div>
         ) : (
           sortedTransactions.map((t, idx) => (
@@ -1005,6 +1112,20 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
                       <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black bg-white text-slate-400 border border-slate-100 uppercase tracking-widest shadow-sm">
                         {t.workStatus}
                       </div>
+                    )}
+                    {t.customer?.name && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedCustomerForHistory(t.customer!.name);
+                        }}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 uppercase tracking-widest shadow-xs transition-all cursor-pointer"
+                        title={`Click to view ${t.customer.name}'s entire past service history & total lifetime spending`}
+                      >
+                        <User size={10} className="text-amber-600 shrink-0" />
+                        <span>{t.customer.name}</span>
+                      </button>
                     )}
                   </div>
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] flex items-center gap-1.5">
@@ -1151,7 +1272,17 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
                 {t.customer.name && (
                   <div className="flex items-center gap-2.5 text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">
                     <User size={12} className="text-amber-600" />
-                    <span className="text-slate-700">{t.customer.name}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedCustomerForHistory(t.customer!.name);
+                      }}
+                      className="text-slate-800 hover:text-amber-600 font-extrabold underline decoration-amber-500/50 hover:decoration-amber-600 underline-offset-4 transition-all cursor-pointer text-left"
+                      title={`Click to view ${t.customer.name}'s entire past service history & total lifetime spending`}
+                    >
+                      {t.customer.name}
+                    </button>
                   </div>
                 )}
                 {t.customer.phone && (
@@ -1186,11 +1317,65 @@ export default function TransactionList({ transactions, onDelete, onEdit, onExpo
                 )}
               </div>
             )}
+
+            {/* Diagnostic & Repair Checklist (Auto-Save Enabled) */}
+            {(t.repairChecklist || (t.category === 'Screen replacement' || t.category === 'Back glass' || t.category === 'Other fix' || t.category === 'Labor' || t.workStatus !== 'Not Started')) && (
+              <div className="mt-3 p-4 bg-slate-50/90 rounded-2xl border border-slate-200/80 shadow-xs">
+                <div className="flex items-center justify-between mb-2.5 flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <Wrench size={13} className="text-amber-600" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-700">Diagnostic & Repair Checklist</span>
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-black border border-emerald-300">
+                      <span className="w-1 h-1 rounded-full bg-emerald-600 animate-pulse" /> Auto-Save Enabled
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                    {(t.repairChecklist || STANDARD_REPAIR_CHECKLIST).filter(i => i.checked).length} / {(t.repairChecklist || STANDARD_REPAIR_CHECKLIST).length} Tests Completed
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                  {(t.repairChecklist || STANDARD_REPAIR_CHECKLIST).map(item => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleChecklist(t, item.id);
+                      }}
+                      className={cn(
+                        "flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-left transition-all cursor-pointer",
+                        item.checked
+                          ? "bg-emerald-50/90 border-emerald-300 text-emerald-950 font-bold"
+                          : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                      )}
+                    >
+                      {item.checked ? (
+                        <CheckSquare size={14} className="text-emerald-600 shrink-0" />
+                      ) : (
+                        <Square size={14} className="text-slate-400 shrink-0" />
+                      )}
+                      <span className={cn("text-[11px] truncate", item.checked && "line-through text-slate-500")}>
+                        {item.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             </div>
             </motion.div>
           ))
         )}
       </div>
+
+      <CustomerHistoryModal
+        isOpen={Boolean(selectedCustomerForHistory)}
+        onClose={() => setSelectedCustomerForHistory(null)}
+        customerName={selectedCustomerForHistory}
+        transactions={allTransactions || transactions}
+        onEditTransaction={onEdit}
+        onDeleteTransaction={onDelete}
+      />
     </div>
   );
 }

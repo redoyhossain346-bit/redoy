@@ -94,14 +94,23 @@ export default function InventoryManager({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
-  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error' | 'warning'} | null>(null);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [showColorCatalogModal, setShowColorCatalogModal] = useState(false);
   const [isPhoneAndPartsModalOpen, setIsPhoneAndPartsModalOpen] = useState(false);
 
   const handleAddMultipleItems = (newItems: InventoryItem[]) => {
     onUpdateInventory([...inventory, ...newItems]);
-    setNotification({ message: `Successfully registered ${newItems.length} phone unit(s) and spare part(s) to store!`, type: 'success' });
+    const lowStockItemsAdded = newItems.filter(item => item.quantity <= item.minStock);
+    if (lowStockItemsAdded.length > 0) {
+      const names = lowStockItemsAdded.slice(0, 2).map(i => i.name).join(', ') + (lowStockItemsAdded.length > 2 ? ` (+${lowStockItemsAdded.length - 2} more)` : '');
+      setNotification({
+        message: `Low Stock Alert: ${lowStockItemsAdded.length} item(s) added at or below minimum stock level (${names})!`,
+        type: 'warning'
+      });
+    } else {
+      setNotification({ message: `Successfully registered ${newItems.length} phone unit(s) and spare part(s) to store!`, type: 'success' });
+    }
   };
 
   const [newItem, setNewItem] = useState<Omit<InventoryItem, 'id'>>({
@@ -118,7 +127,7 @@ export default function InventoryManager({
 
   useEffect(() => {
     if (notification) {
-      const timer = setTimeout(() => setNotification(null), 3000);
+      const timer = setTimeout(() => setNotification(null), notification.type === 'warning' ? 5000 : 3000);
       return () => clearTimeout(timer);
     }
   }, [notification]);
@@ -219,7 +228,14 @@ export default function InventoryManager({
       color: '',
       brand: ''
     });
-    setNotification({ message: 'New inventory asset registered with model & color!', type: 'success' });
+    if (item.quantity <= item.minStock) {
+      setNotification({
+        message: `Low Stock Alert: "${item.name}" added at or below minimum stock level (${item.quantity} ≤ ${item.minStock})!`,
+        type: 'warning'
+      });
+    } else {
+      setNotification({ message: 'New inventory asset registered with model & color!', type: 'success' });
+    }
   };
 
   const handleSaveEditItem = (e: React.FormEvent) => {
@@ -769,10 +785,14 @@ export default function InventoryManager({
             exit={{ opacity: 0, y: -20, x: '-50%' }}
             className={cn(
               "fixed top-10 left-1/2 z-[200] px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest flex items-center gap-3 shadow-2xl border",
-              notification.type === 'success' ? "bg-emerald-600 text-white border-emerald-500" : "bg-rose-600 text-white border-rose-500"
+              notification.type === 'success' ? "bg-emerald-600 text-white border-emerald-500" :
+              notification.type === 'warning' ? "bg-amber-600 text-white border-amber-500" :
+              "bg-rose-600 text-white border-rose-500"
             )}
           >
-            {notification.type === 'success' ? <Check size={16} /> : <AlertCircle size={16} />}
+            {notification.type === 'success' ? <Check size={16} /> :
+             notification.type === 'warning' ? <AlertTriangle size={16} /> :
+             <AlertCircle size={16} />}
             {notification.message}
           </motion.div>
         )}

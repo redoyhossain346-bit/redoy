@@ -17,6 +17,7 @@ import SalesSummary from './components/SalesSummary';
 import DailyStatement from './components/DailyStatement';
 import GoogleSheetsManagerModal from './components/GoogleSheetsManagerModal';
 import GmailManagerModal from './components/GmailManagerModal';
+import SettingsModal from './components/SettingsModal';
 import PhoneColorCatalog from './components/PhoneColorCatalog';
 import LowStockBanner from './components/LowStockBanner';
 import { Transaction, UserProfile, BudgetSummary, InventoryItem, PartUsage, WorkHour } from './types';
@@ -27,6 +28,7 @@ import autoTable from 'jspdf-autotable';
 import { localStorageService } from './services/localStorageService';
 import { getAccessToken, clearAccessToken, initAuth } from './services/googleSheetsAuth';
 import { googleSheetsService } from './services/googleSheetsService';
+import { googleDriveBackupService } from './services/googleDriveBackupService';
 import { motion } from 'motion/react';
 
 export default function App() {
@@ -46,6 +48,7 @@ export default function App() {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isGoogleSheetsOpen, setIsGoogleSheetsOpen] = useState(false);
   const [isGmailOpen, setIsGmailOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [hasGoogleToken, setHasGoogleToken] = useState<boolean>(!!getAccessToken());
 
   useEffect(() => {
@@ -151,6 +154,23 @@ export default function App() {
     }
   }, [transactions, inventory, workHours, isLoaded]);
 
+  // Automatic recurring silent JSON backup to Google Drive folder
+  useEffect(() => {
+    if (!isLoaded) return;
+    const runBackupCheck = () => {
+      googleDriveBackupService.checkAndRunSilentBackup();
+    };
+    // Check shortly after load
+    const timer = setTimeout(runBackupCheck, 3000);
+    // Check periodically every 60 seconds
+    const interval = setInterval(runBackupCheck, 60 * 1000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, [isLoaded]);
+
   const handleUpdateInventory = async (newInventory: InventoryItem[]) => {
     setInventory(newInventory);
     // Find what changed and save only changed items
@@ -182,6 +202,15 @@ export default function App() {
   const handleUpdateTaxRate = async (newRate: number) => {
     setTaxRate(newRate);
     await localStorageService.saveTaxRate(newRate);
+  };
+
+  const handleRestoreDatabase = () => {
+    localStorageService.getTransactions(setTransactions);
+    localStorageService.getInventory(setInventory);
+    localStorageService.getWorkHours(setWorkHours);
+    localStorageService.getPartUsage(setUsageHistory);
+    localStorageService.getCategories(setCategories);
+    localStorageService.getTaxRate(setTaxRate);
   };
 
   const lowStockItems = useMemo(() => {
@@ -315,6 +344,11 @@ export default function App() {
     }
   };
 
+  const handleUpdateTransaction = async (updated: Transaction) => {
+    await localStorageService.saveTransaction(updated);
+    localStorageService.getTransactions(setTransactions);
+  };
+
   const handleDeleteTransaction = async (id: string) => {
     onRequestPasscode(
       async () => {
@@ -438,6 +472,7 @@ export default function App() {
         lastLoginTime={lastLoginTime}
         isCompactMode={isCompactMode}
         onToggleCompactMode={() => setIsCompactMode(!isCompactMode)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
       
       <PasscodeModal 
@@ -466,6 +501,16 @@ export default function App() {
         transactions={transactions}
         inventory={inventory}
         workHours={workHours}
+      />
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onRestoreDatabase={handleRestoreDatabase}
+        taxRate={taxRate}
+        onUpdateTaxRate={handleUpdateTaxRate}
+        isCompactMode={isCompactMode}
+        onToggleCompactMode={() => setIsCompactMode(!isCompactMode)}
       />
 
       <div className="flex gap-2 bg-slate-100/50 p-2 rounded-3xl w-fit mx-auto mt-8 border border-slate-200 backdrop-blur-xl mb-6 flex-wrap justify-center">
@@ -585,11 +630,11 @@ export default function App() {
                   </div>
                 </div>
                 
-                <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-200">
+                <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-200 flex-wrap gap-1">
                   <button
                     onClick={() => setFilterType('month')}
                     className={cn(
-                      "px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all uppercase",
+                      "px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all uppercase cursor-pointer",
                       filterType === 'month' ? "bg-amber-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
                     )}
                   >
@@ -598,7 +643,7 @@ export default function App() {
                   <button
                     onClick={() => setFilterType('year')}
                     className={cn(
-                      "px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all uppercase",
+                      "px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all uppercase cursor-pointer",
                       filterType === 'year' ? "bg-amber-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
                     )}
                   >
@@ -607,19 +652,49 @@ export default function App() {
                   <button
                     onClick={() => setFilterType('range')}
                     className={cn(
-                      "px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all uppercase",
+                      "px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all uppercase cursor-pointer",
                       filterType === 'range' ? "bg-amber-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
                     )}
                   >
                     Range
                   </button>
+                  <button
+                    onClick={() => setFilterType('all')}
+                    className={cn(
+                      "px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all uppercase cursor-pointer",
+                      filterType === 'all' ? "bg-amber-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
+                    )}
+                    title="View entire lifetime history across all months and years"
+                  >
+                    All Time
+                  </button>
                 </div>
               </div>
 
               <div className="flex items-center gap-6 pt-6 border-t border-slate-100">
+                {filterType === 'all' && (
+                  <div className="flex-1 flex items-center justify-center bg-amber-500/10 border border-amber-500/30 rounded-2xl h-14 px-4 text-amber-800 text-xs font-black uppercase tracking-widest">
+                    Showing All-Time History ({transactions.length} Total Transactions Logged)
+                  </div>
+                )}
+
                 {filterType === 'month' && (
-                  <div className="flex-1">
-                    <div className="relative">
+                  <div className="flex-1 flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const [y, m] = selectedMonth.split('-').map(Number);
+                        const d = new Date(y, m - 2, 1);
+                        const ny = d.getFullYear();
+                        const nm = String(d.getMonth() + 1).padStart(2, '0');
+                        setSelectedMonth(`${ny}-${nm}`);
+                      }}
+                      className="h-14 px-3 sm:px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black uppercase tracking-wider transition-all cursor-pointer border border-slate-200 shrink-0 flex items-center gap-1"
+                      title="Previous Month"
+                    >
+                      ◀ <span className="hidden sm:inline">Prev</span>
+                    </button>
+                    <div className="relative flex-1 min-w-[150px]">
                       <input
                         type="month"
                         value={selectedMonth}
@@ -632,6 +707,34 @@ export default function App() {
                       />
                       <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] font-black text-amber-600 bg-white px-2 uppercase tracking-widest">Active Month</span>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const [y, m] = selectedMonth.split('-').map(Number);
+                        const d = new Date(y, m, 1);
+                        const ny = d.getFullYear();
+                        const nm = String(d.getMonth() + 1).padStart(2, '0');
+                        setSelectedMonth(`${ny}-${nm}`);
+                      }}
+                      className="h-14 px-3 sm:px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black uppercase tracking-wider transition-all cursor-pointer border border-slate-200 shrink-0 flex items-center gap-1"
+                      title="Next Month"
+                    >
+                      <span className="hidden sm:inline">Next</span> ▶
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const d = new Date();
+                        const lm = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+                        const ny = lm.getFullYear();
+                        const nm = String(lm.getMonth() + 1).padStart(2, '0');
+                        setSelectedMonth(`${ny}-${nm}`);
+                      }}
+                      className="h-14 px-3.5 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-black uppercase tracking-widest transition-all cursor-pointer shrink-0"
+                      title="Quick switch to Last Month's history"
+                    >
+                      Last Month
+                    </button>
                   </div>
                 )}
 
@@ -645,7 +748,7 @@ export default function App() {
                       }}
                       className="glass-input h-14 w-full text-sm font-black border-slate-200 text-slate-800 appearance-none px-4 bg-white text-center uppercase tracking-widest"
                     >
-                      {Array.from({ length: 20 }, (_, i) => 2024 + i).map(year => (
+                      {Array.from({ length: 16 }, (_, i) => 2020 + i).map(year => (
                         <option key={year} value={year.toString()} className="bg-white">{year}</option>
                       ))}
                     </select>
@@ -794,12 +897,16 @@ export default function App() {
             <div className="w-full space-y-8">
               <SalesSummary transactions={filteredTransactions} />
               
+              <DailyStatement transactions={filteredTransactions} workHours={filteredWorkHours} />
+
               <TransactionList 
                 transactions={filteredTransactions} 
+                allTransactions={transactions}
                 onDelete={handleDeleteTransaction} 
                 onEdit={handleEditInit}
                 onExportAudit={handleExportAudit}
                 workHours={filteredWorkHours}
+                onUpdateTransaction={handleUpdateTransaction}
               />
             </div>
           </div>

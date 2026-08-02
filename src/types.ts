@@ -3,6 +3,9 @@ export type TransactionType = 'income' | 'expense' | 'refund';
 export type PaymentMethod = 'CASH' | 'CARD' | 'ZELLE';
 
 export type Category = 
+  | 'Repair'
+  | 'Accessory'
+  | 'Service'
   | 'Uber'
   | 'Food' 
   | 'Transport' 
@@ -85,9 +88,28 @@ export interface Transaction {
   };
   date: string;
   note: string;
+  repairChecklist?: RepairChecklistItem[];
   createdAt?: any;
   updatedAt?: any;
 }
+
+export interface RepairChecklistItem {
+  id: string;
+  label: string;
+  checked: boolean;
+}
+
+export const STANDARD_REPAIR_CHECKLIST: RepairChecklistItem[] = [
+  { id: 'touchscreen', label: 'Touchscreen test', checked: false },
+  { id: 'battery_drain', label: 'Battery drain test', checked: false },
+  { id: 'speaker_mic', label: 'Speaker / Microphone test', checked: false },
+  { id: 'cameras', label: 'Camera (Front/Rear) test', checked: false },
+  { id: 'charging_port', label: 'Charging port test', checked: false },
+  { id: 'wifi_cellular', label: 'Wi-Fi / Cellular signal test', checked: false },
+  { id: 'buttons', label: 'Physical buttons / Switch test', checked: false },
+  { id: 'biometrics', label: 'Face ID / Fingerprint test', checked: false },
+  { id: 'proximity', label: 'Proximity sensor test', checked: false }
+];
 
 export interface InventoryItem {
   id: string;

@@ -896,6 +896,22 @@ export const PHONE_COLORS_CATALOG: PhoneModelCatalogItem[] = [
     ]
   },
   {
+    id: 'google-pixel-9a',
+    brand: 'Google',
+    model: 'Pixel 9A',
+    releaseYear: 2025,
+    msrp: 499,
+    chipset: 'Google Tensor G4',
+    display: '6.3" Actua OLED (120Hz)',
+    camera: '48MP Main + 13MP Ultra Wide',
+    officialColors: [
+      { name: 'Aloe Green', hex: '#C2DCBA', colorFamily: 'Green', isHeroFinish: true },
+      { name: 'Bay Blue', hex: '#8FAEC4', colorFamily: 'Blue' },
+      { name: 'Porcelain', hex: '#F0EDE6', colorFamily: 'White / Silver' },
+      { name: 'Obsidian', hex: '#27292B', colorFamily: 'Black / Dark' }
+    ]
+  },
+  {
     id: 'google-pixel-9-pro-xl',
     brand: 'Google',
     model: 'Pixel 9 Pro XL',
@@ -958,6 +974,22 @@ export const PHONE_COLORS_CATALOG: PhoneModelCatalogItem[] = [
     ]
   },
   {
+    id: 'google-pixel-8a',
+    brand: 'Google',
+    model: 'Pixel 8A',
+    releaseYear: 2024,
+    msrp: 499,
+    chipset: 'Google Tensor G3',
+    display: '6.1" Actua OLED (120Hz)',
+    camera: '64MP Main + 13MP Ultra Wide',
+    officialColors: [
+      { name: 'Aloe', hex: '#C2DCBA', colorFamily: 'Green', isHeroFinish: true },
+      { name: 'Bay', hex: '#8FAEC4', colorFamily: 'Blue' },
+      { name: 'Porcelain', hex: '#F0EDE6', colorFamily: 'White / Silver' },
+      { name: 'Obsidian', hex: '#27292B', colorFamily: 'Black / Dark' }
+    ]
+  },
+  {
     id: 'google-pixel-8-pro',
     brand: 'Google',
     model: 'Pixel 8 Pro',
@@ -990,25 +1022,9 @@ export const PHONE_COLORS_CATALOG: PhoneModelCatalogItem[] = [
     ]
   },
   {
-    id: 'google-pixel-8a',
-    brand: 'Google',
-    model: 'Pixel 8a',
-    releaseYear: 2024,
-    msrp: 499,
-    chipset: 'Google Tensor G3',
-    display: '6.1" Actua OLED (120Hz)',
-    camera: '64MP Main + 13MP Ultra Wide',
-    officialColors: [
-      { name: 'Aloe', hex: '#C2DCBA', colorFamily: 'Green', isHeroFinish: true },
-      { name: 'Bay', hex: '#8FAEC4', colorFamily: 'Blue' },
-      { name: 'Porcelain', hex: '#F0EDE6', colorFamily: 'White / Silver' },
-      { name: 'Obsidian', hex: '#27292B', colorFamily: 'Black / Dark' }
-    ]
-  },
-  {
     id: 'google-pixel-fold',
     brand: 'Google',
-    model: 'Pixel Fold (1st Gen)',
+    model: 'Pixel Fold',
     releaseYear: 2023,
     msrp: 1799,
     chipset: 'Google Tensor G2',
@@ -1017,6 +1033,22 @@ export const PHONE_COLORS_CATALOG: PhoneModelCatalogItem[] = [
     officialColors: [
       { name: 'Obsidian', hex: '#27292B', colorFamily: 'Black / Dark', isHeroFinish: true },
       { name: 'Porcelain', hex: '#F0EDE6', colorFamily: 'White / Silver' }
+    ]
+  },
+  {
+    id: 'google-pixel-7a',
+    brand: 'Google',
+    model: 'Pixel 7A',
+    releaseYear: 2023,
+    msrp: 499,
+    chipset: 'Google Tensor G2',
+    display: '6.1" OLED (90Hz)',
+    camera: '64MP Main + 13MP Ultra Wide',
+    officialColors: [
+      { name: 'Sea', hex: '#A3C2DC', colorFamily: 'Blue', isHeroFinish: true },
+      { name: 'Coral', hex: '#E87D63', colorFamily: 'Pink / Red' },
+      { name: 'Snow', hex: '#F5F5F7', colorFamily: 'White / Silver' },
+      { name: 'Charcoal', hex: '#3C3E42', colorFamily: 'Black / Dark' }
     ]
   },
   {
@@ -1035,18 +1067,32 @@ export const PHONE_COLORS_CATALOG: PhoneModelCatalogItem[] = [
     ]
   },
   {
-    id: 'google-pixel-7a',
+    id: 'google-pixel-7',
     brand: 'Google',
-    model: 'Pixel 7a',
-    releaseYear: 2023,
-    msrp: 499,
+    model: 'Pixel 7',
+    releaseYear: 2022,
+    msrp: 599,
     chipset: 'Google Tensor G2',
-    display: '6.1" OLED (90Hz)',
-    camera: '64MP Main + 13MP Ultra Wide',
+    display: '6.3" AMOLED (90Hz)',
+    camera: '50MP Main + 12MP Ultra Wide',
     officialColors: [
-      { name: 'Sea', hex: '#A3C2DC', colorFamily: 'Blue', isHeroFinish: true },
-      { name: 'Coral', hex: '#E87D63', colorFamily: 'Pink / Red' },
+      { name: 'Lemongrass', hex: '#D8E2A2', colorFamily: 'Green', isHeroFinish: true },
       { name: 'Snow', hex: '#F5F5F7', colorFamily: 'White / Silver' },
+      { name: 'Obsidian', hex: '#27292B', colorFamily: 'Black / Dark' }
+    ]
+  },
+  {
+    id: 'google-pixel-6a',
+    brand: 'Google',
+    model: 'Pixel 6A',
+    releaseYear: 2022,
+    msrp: 449,
+    chipset: 'Google Tensor (1st Gen)',
+    display: '6.1" OLED (60Hz)',
+    camera: '12.2MP Main + 12MP Ultra Wide',
+    officialColors: [
+      { name: 'Sage', hex: '#B8CDBA', colorFamily: 'Green', isHeroFinish: true },
+      { name: 'Chalk', hex: '#F0EDE6', colorFamily: 'White / Silver' },
       { name: 'Charcoal', hex: '#3C3E42', colorFamily: 'Black / Dark' }
     ]
   },
@@ -1063,6 +1109,76 @@ export const PHONE_COLORS_CATALOG: PhoneModelCatalogItem[] = [
       { name: 'Sorta Sunny', hex: '#F7D6B0', colorFamily: 'Gold / Bronze', isHeroFinish: true },
       { name: 'Cloudy White', hex: '#E4E6E8', colorFamily: 'White / Silver' },
       { name: 'Stormy Black', hex: '#2D3033', colorFamily: 'Black / Dark' }
+    ]
+  },
+  {
+    id: 'google-pixel-6',
+    brand: 'Google',
+    model: 'Pixel 6',
+    releaseYear: 2021,
+    msrp: 599,
+    chipset: 'Google Tensor (1st Gen)',
+    display: '6.4" AMOLED (90Hz)',
+    camera: '50MP Main + 12MP Ultra Wide',
+    officialColors: [
+      { name: 'Kinda Coral', hex: '#ED8F78', colorFamily: 'Pink / Red', isHeroFinish: true },
+      { name: 'Sorta Seafoam', hex: '#C2DCBA', colorFamily: 'Green' },
+      { name: 'Stormy Black', hex: '#2D3033', colorFamily: 'Black / Dark' }
+    ]
+  },
+  {
+    id: 'google-pixel-5a-5g',
+    brand: 'Google',
+    model: 'Pixel 5A 5G',
+    releaseYear: 2021,
+    msrp: 449,
+    chipset: 'Snapdragon 765G',
+    display: '6.34" OLED (60Hz)',
+    camera: '12.2MP Main + 16MP Ultra Wide',
+    officialColors: [
+      { name: 'Mostly Black', hex: '#2D3033', colorFamily: 'Black / Dark', isHeroFinish: true }
+    ]
+  },
+  {
+    id: 'google-pixel-5',
+    brand: 'Google',
+    model: 'Pixel 5',
+    releaseYear: 2020,
+    msrp: 699,
+    chipset: 'Snapdragon 765G',
+    display: '6.0" OLED (90Hz)',
+    camera: '12.2MP Main + 16MP Ultra Wide',
+    officialColors: [
+      { name: 'Sorta Sage', hex: '#A8BCB0', colorFamily: 'Green', isHeroFinish: true },
+      { name: 'Just Black', hex: '#27292B', colorFamily: 'Black / Dark' }
+    ]
+  },
+  {
+    id: 'google-pixel-4a-5g',
+    brand: 'Google',
+    model: 'Pixel 4A 5G',
+    releaseYear: 2020,
+    msrp: 499,
+    chipset: 'Snapdragon 765G',
+    display: '6.2" OLED (60Hz)',
+    camera: '12.2MP Main + 16MP Ultra Wide',
+    officialColors: [
+      { name: 'Just Black', hex: '#27292B', colorFamily: 'Black / Dark' },
+      { name: 'Clearly White', hex: '#F0EDE6', colorFamily: 'White / Silver' }
+    ]
+  },
+  {
+    id: 'google-pixel-4a',
+    brand: 'Google',
+    model: 'Pixel 4A',
+    releaseYear: 2020,
+    msrp: 349,
+    chipset: 'Snapdragon 730G',
+    display: '5.81" OLED (60Hz)',
+    camera: '12.2MP Main',
+    officialColors: [
+      { name: 'Just Black', hex: '#27292B', colorFamily: 'Black / Dark' },
+      { name: 'Barely Blue', hex: '#C7DCEB', colorFamily: 'Blue' }
     ]
   },
 

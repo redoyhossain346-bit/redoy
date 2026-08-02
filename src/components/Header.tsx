@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserCircle, Check, Smartphone, MapPin, Phone, Mail, LogOut, LogIn, Download, FileSpreadsheet, Clock, Maximize2, Minimize2, Sliders } from 'lucide-react';
+import { UserCircle, Check, Smartphone, MapPin, Phone, Mail, LogOut, LogIn, Download, FileSpreadsheet, Clock, Maximize2, Minimize2, Sliders, Settings } from 'lucide-react';
 import { UserProfile } from '../types';
 import { format } from 'date-fns';
 
@@ -18,6 +18,7 @@ interface HeaderProps {
   lastLoginTime?: string;
   isCompactMode?: boolean;
   onToggleCompactMode?: () => void;
+  onOpenSettings?: () => void;
 }
 
 export default function Header({ 
@@ -34,7 +35,8 @@ export default function Header({
   isGmailConnected = false,
   lastLoginTime,
   isCompactMode = false,
-  onToggleCompactMode
+  onToggleCompactMode,
+  onOpenSettings
 }: HeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user.name);
@@ -133,6 +135,17 @@ export default function Header({
               }`}>
                 {isCompactMode ? 'ON' : 'OFF'}
               </span>
+            </button>
+          )}
+
+          {onOpenSettings && (
+            <button
+              onClick={onOpenSettings}
+              className="flex items-center gap-1.5 h-9 px-3 rounded-xl border bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-900 hover:text-white hover:border-slate-800 transition-all cursor-pointer shadow-2xs text-xs font-black uppercase tracking-wider"
+              title="Terminal Settings & Full Database Backup / Restore"
+            >
+              <Settings size={14} />
+              <span className="hidden sm:inline">Settings</span>
             </button>
           )}
 

@@ -822,6 +822,11 @@ export default function AddPhoneAndPartsModal({
                           <h3 className="text-base font-black text-slate-900">
                             {item.model}
                           </h3>
+                          {(item.releaseYear >= 2025 || item.model.includes('Pixel 10')) && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black italic tracking-wide bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-xs">
+                              NEW
+                            </span>
+                          )}
                           <span className="text-xs font-semibold text-slate-500">
                             ({item.releaseYear})
                           </span>
@@ -1439,6 +1444,11 @@ export default function AddPhoneAndPartsModal({
                           <h3 className="text-base font-black text-slate-900">
                             {item.model}
                           </h3>
+                          {(item.releaseYear >= 2025 || item.model.includes('Pixel 10')) && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black italic tracking-wide bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-xs">
+                              NEW
+                            </span>
+                          )}
                           <span className="text-xs font-semibold text-slate-500">
                             ({item.releaseYear})
                           </span>
