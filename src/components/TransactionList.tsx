@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { FileSpreadsheet, FileText, Trash2, Utensils, Car, Home, Zap, Heart, ShoppingBag, Box, DollarSign, Wallet, Smartphone, Layers, Wrench, Hammer, Unlock, Store, Gamepad, Banknote, CreditCard, User, Phone, Mail, ShieldCheck, Fingerprint, Hash, Tablet, Sparkles, ToyBrick, Package, Watch, Cpu, ChevronDown, Search, X, CheckSquare, Square } from 'lucide-react';
+import { FileSpreadsheet, FileText, Trash2, Utensils, Car, Home, Zap, Heart, ShoppingBag, Box, DollarSign, Wallet, Smartphone, Layers, Wrench, Hammer, Unlock, Store, Gamepad, Banknote, CreditCard, User, Phone, Mail, ShieldCheck, Fingerprint, Hash, Tablet, Sparkles, ToyBrick, Package, Watch, Cpu, ChevronDown, Search, X, CheckSquare, Square, Coffee } from 'lucide-react';
 import { Transaction, WorkHour, STANDARD_REPAIR_CHECKLIST } from '../types';
 import { formatCurrency, cn, formatTransactionId, formatTxDateTime, format12Hour, formatDateSafe } from '../lib/utils';
 import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
@@ -41,6 +41,19 @@ const CATEGORY_ICONS: Record<string, any> = {
   Doll: <ToyBrick size={16} />,
   Case: <Package size={16} />,
   'Water Bottle': <ShoppingBag size={16} />,
+  Drinks: <Coffee size={16} />,
+  Noodles: <Utensils size={16} />,
+  Coffee: <Coffee size={16} />,
+  Snacks: <Utensils size={16} />,
+  'Stanley cup': <ShoppingBag size={16} />,
+  'Earbud case': <Package size={16} />,
+  Fan: <Zap size={16} />,
+  Speaker: <Smartphone size={16} />,
+  'Charging cord': <Zap size={16} />,
+  Adapter: <Zap size={16} />,
+  Cable: <Zap size={16} />,
+  Bag: <ShoppingBag size={16} />,
+  'Custom Name': <ShoppingBag size={16} />,
   Accessories: <Watch size={16} />,
   'Parts Sell': <Cpu size={16} />,
   'Toy sell': <Gamepad size={16} />,

@@ -14,7 +14,6 @@ import ChatBot from './components/ChatBot';
 import InventoryManager from './components/InventoryManager';
 import WorkHoursTracker from './components/WorkHoursTracker';
 import SalesSummary from './components/SalesSummary';
-import DailyStatement from './components/DailyStatement';
 import GoogleSheetsManagerModal from './components/GoogleSheetsManagerModal';
 import GmailManagerModal from './components/GmailManagerModal';
 import SettingsModal from './components/SettingsModal';
@@ -141,11 +140,20 @@ export default function App() {
           localStorage.setItem('gsheets_last_synced', syncTime);
         } catch (err: any) {
           const errMsg = err?.message || String(err);
-          if (errMsg.includes('authentication credentials') || errMsg.includes('401') || errMsg.includes('Unauthenticated') || errMsg.includes('invalid grant')) {
+          if (
+            errMsg.includes('authentication credentials') ||
+            errMsg.includes('401') ||
+            errMsg.includes('403') ||
+            errMsg.includes('Unauthenticated') ||
+            errMsg.includes('invalid grant') ||
+            errMsg.includes('Failed to fetch') ||
+            errMsg.includes('NetworkError') ||
+            errMsg.includes('Load failed')
+          ) {
             clearAccessToken();
-            console.warn('Google Sheets background sync paused: session expired or unauthenticated.');
+            console.warn('Google Sheets background sync paused: session expired, offline, or unauthenticated.');
           } else {
-            console.error('Background Google Sheets sync failed:', err);
+            console.warn('Background Google Sheets sync warning:', err);
           }
         }
       }, 2000); // 2 second debounce
@@ -896,8 +904,6 @@ export default function App() {
             {/* Bottom Section: Sales Summary & Recent Activity */}
             <div className="w-full space-y-8">
               <SalesSummary transactions={filteredTransactions} />
-              
-              <DailyStatement transactions={filteredTransactions} workHours={filteredWorkHours} />
 
               <TransactionList 
                 transactions={filteredTransactions} 

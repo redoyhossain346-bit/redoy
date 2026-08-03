@@ -136,13 +136,13 @@ export const localStorageService = {
 
   // Categories
   getCategories: (callback: (categories: string[]) => void) => {
-    const data = getFromLocal<string[]>(STORAGE_KEYS.CATEGORIES, ['Screens', 'Batteries', 'Charging Ports', 'Cameras', 'Back Glass', 'Accessories']);
+    const data = getFromLocal<string[]>(STORAGE_KEYS.CATEGORIES, ['Screens', 'Batteries', 'Charging Ports', 'Cameras', 'Back Glass', 'Accessories', 'Drinks', 'Noodles', 'Snacks', 'Stanley cup', 'Earbud case', 'Fan', 'Speaker', 'Charging cord', 'Adapter', 'Cable', 'Bag', 'Custom Name']);
     callback(data);
     return () => {};
   },
 
   saveCategory: (name: string) => {
-    const current = getFromLocal<string[]>(STORAGE_KEYS.CATEGORIES, ['Screens', 'Batteries', 'Charging Ports', 'Cameras', 'Back Glass', 'Accessories']);
+    const current = getFromLocal<string[]>(STORAGE_KEYS.CATEGORIES, ['Screens', 'Batteries', 'Charging Ports', 'Cameras', 'Back Glass', 'Accessories', 'Drinks', 'Noodles', 'Snacks', 'Stanley cup', 'Earbud case', 'Fan', 'Speaker', 'Charging cord', 'Adapter', 'Cable', 'Bag', 'Custom Name']);
     if (!current.includes(name)) {
       current.push(name);
       saveToLocal(STORAGE_KEYS.CATEGORIES, current);
@@ -171,7 +171,7 @@ export const localStorageService = {
       inventory: getFromLocal<InventoryItem[]>(STORAGE_KEYS.INVENTORY, []),
       workHours: getFromLocal<WorkHour[]>(STORAGE_KEYS.WORK_HOURS, []),
       partUsage: getFromLocal<PartUsage[]>(STORAGE_KEYS.PART_USAGE, []),
-      categories: getFromLocal<string[]>(STORAGE_KEYS.CATEGORIES, ['Screens', 'Batteries', 'Charging Ports', 'Cameras', 'Back Glass', 'Accessories']),
+      categories: getFromLocal<string[]>(STORAGE_KEYS.CATEGORIES, ['Screens', 'Batteries', 'Charging Ports', 'Cameras', 'Back Glass', 'Accessories', 'Drinks', 'Noodles', 'Snacks', 'Stanley cup', 'Earbud case', 'Fan', 'Speaker', 'Charging cord', 'Adapter', 'Cable', 'Bag', 'Custom Name']),
       taxRate: getFromLocal<number>(STORAGE_KEYS.TAX_RATE, 0.081),
       userProfile: getFromLocal<any>(STORAGE_KEYS.USER_DATA, null),
     };

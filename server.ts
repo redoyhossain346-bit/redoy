@@ -210,7 +210,7 @@ app.post("/api/suggest-category", async (req, res) => {
 
     const prompt = `
 Analyze this repair shop transaction entry and suggest the best primary Category from the following list:
-['Repair', 'Accessory', 'Service', 'Screen replacement', 'Back glass', 'Other fix', 'Labor', 'Unlocking', 'Phone sell', 'Tablet Sell', 'Perfume', 'Doll', 'Case', 'Water Bottle', 'Accessories', 'Parts Sell', 'Toy sell', 'Tempered Glass', 'Battery', 'Camera Protector', 'Watch Belt', 'Watch Protector', 'Carrier sell', 'Uber', 'Income', 'Food', 'Transport', 'Rent', 'Utilities', 'Shopping', 'Others']
+['Repair', 'Accessory', 'Service', 'Screen replacement', 'Back glass', 'Other fix', 'Labor', 'Unlocking', 'Phone sell', 'Tablet Sell', 'Perfume', 'Doll', 'Case', 'Water Bottle', 'Drinks', 'Noodles', 'Coffee', 'Snacks', 'Stanley cup', 'Earbud case', 'Fan', 'Speaker', 'Charging cord', 'Adapter', 'Cable', 'Bag', 'Custom Name', 'Accessories', 'Parts Sell', 'Toy sell', 'Tempered Glass', 'Battery', 'Camera Protector', 'Watch Belt', 'Watch Protector', 'Carrier sell', 'Uber', 'Income', 'Food', 'Transport', 'Rent', 'Utilities', 'Shopping', 'Others']
 
 TRANSACTION DETAILS:
 - Note / Internal Log: "${note}"
@@ -362,6 +362,98 @@ function suggestCategoryHeuristic(note: string = '', customerName: string = '', 
       reason: "Detected mobile device sale or trade-in keywords.",
       allSuggestions: ['Phone sell', 'Tablet Sell', 'Income']
     };
+  }
+
+  if (/\b(drink|drinks|soda|water|coke|pepsi|juice|redbull|monster|coffee|tea|latte|snack|snacks|candy|chip|chips|cookie|chocolate|noodle|noodles|ramen)\b/i.test(text)) {
+    if (/\b(noodle|noodles|ramen)\b/i.test(text)) {
+      return {
+        suggestedCategory: 'Noodles',
+        confidence: 0.93,
+        reason: "Detected noodles / ramen item keyword in transaction details.",
+        allSuggestions: ['Noodles', 'Snacks', 'Food']
+      };
+    }
+    if (/\b(coffee|tea|latte)\b/i.test(text)) {
+      return {
+        suggestedCategory: 'Coffee',
+        confidence: 0.92,
+        reason: "Detected coffee / beverage keyword in transaction details.",
+        allSuggestions: ['Coffee', 'Drinks', 'Snacks', 'Food']
+      };
+    }
+    if (/\b(snack|snacks|candy|chip|chips|cookie|chocolate)\b/i.test(text)) {
+      return {
+        suggestedCategory: 'Snacks',
+        confidence: 0.91,
+        reason: "Detected snack / food item keyword in transaction details.",
+        allSuggestions: ['Snacks', 'Drinks', 'Food']
+      };
+    }
+    return {
+      suggestedCategory: 'Drinks',
+      confidence: 0.93,
+      reason: "Detected drink / beverage keyword in transaction details.",
+      allSuggestions: ['Drinks', 'Coffee', 'Snacks', 'Food']
+    };
+  }
+
+  if (/\b(stanley|earbud case|fan|speaker|charging cord|adapter|cable|bag)\b/i.test(text)) {
+    if (/\bstanley\b/i.test(text)) {
+      return {
+        suggestedCategory: 'Stanley cup',
+        confidence: 0.93,
+        reason: "Detected Stanley cup item keyword in transaction details.",
+        allSuggestions: ['Stanley cup', 'Water Bottle', 'Accessories']
+      };
+    }
+    if (/\bearbud case\b/i.test(text)) {
+      return {
+        suggestedCategory: 'Earbud case',
+        confidence: 0.92,
+        reason: "Detected Earbud case keyword in transaction details.",
+        allSuggestions: ['Earbud case', 'Case', 'Accessories']
+      };
+    }
+    if (/\bfan\b/i.test(text)) {
+      return {
+        suggestedCategory: 'Fan',
+        confidence: 0.92,
+        reason: "Detected fan keyword in transaction details.",
+        allSuggestions: ['Fan', 'Accessories', 'Parts Sell']
+      };
+    }
+    if (/\bspeaker\b/i.test(text)) {
+      return {
+        suggestedCategory: 'Speaker',
+        confidence: 0.92,
+        reason: "Detected speaker keyword in transaction details.",
+        allSuggestions: ['Speaker', 'Accessories', 'Parts Sell']
+      };
+    }
+    if (/\b(charging cord|cable)\b/i.test(text)) {
+      return {
+        suggestedCategory: 'Charging cord',
+        confidence: 0.92,
+        reason: "Detected charging cord or cable keyword in transaction details.",
+        allSuggestions: ['Charging cord', 'Cable', 'Adapter', 'Accessories']
+      };
+    }
+    if (/\badapter\b/i.test(text)) {
+      return {
+        suggestedCategory: 'Adapter',
+        confidence: 0.92,
+        reason: "Detected adapter keyword in transaction details.",
+        allSuggestions: ['Adapter', 'Charging cord', 'Cable', 'Accessories']
+      };
+    }
+    if (/\bbag\b/i.test(text)) {
+      return {
+        suggestedCategory: 'Bag',
+        confidence: 0.92,
+        reason: "Detected bag keyword in transaction details.",
+        allSuggestions: ['Bag', 'Case', 'Accessories']
+      };
+    }
   }
 
   // Default fallback

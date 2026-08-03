@@ -247,7 +247,7 @@ export const googleDriveBackupService = {
         console.log('[Google Drive Recurring Silent Backup] Complete:', result.message);
         return { ran: true, success: true, message: result.message };
       } catch (err: any) {
-        console.error('[Google Drive Recurring Silent Backup] Failed:', err);
+        console.warn('[Google Drive Recurring Silent Backup] Failed:', err);
         return { ran: true, success: false, message: err?.message || 'Silent backup failed' };
       }
     }

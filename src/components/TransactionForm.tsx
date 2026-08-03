@@ -15,7 +15,7 @@ interface TransactionFormProps {
 
 const CATEGORIES: Category[] = [
   'Repair', 'Accessory', 'Service', 'Screen replacement', 'Back glass', 'Other fix', 'Labor', 'Unlocking', 'Phone sell', 'Tablet Sell', 
-  'Perfume', 'Doll', 'Case', 'Water Bottle', 'Accessories', 'Parts Sell', 'Toy sell',
+  'Perfume', 'Doll', 'Case', 'Water Bottle', 'Drinks', 'Noodles', 'Coffee', 'Snacks', 'Stanley cup', 'Earbud case', 'Fan', 'Speaker', 'Charging cord', 'Adapter', 'Cable', 'Bag', 'Custom Name', 'Accessories', 'Parts Sell', 'Toy sell',
   'Tempered Glass', 'Battery', 'Camera Protector', 'Watch Belt', 'Watch Protector',
   'Carrier sell', 'Uber', 'Income', 'Food', 'Transport', 'Rent', 'Utilities', 'Shopping', 'Others'
 ];
@@ -33,6 +33,7 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
   const [type, setType] = useState<TransactionType>('income');
   const [items, setItems] = useState<TransactionItem[]>([]);
   const [itemCategory, setItemCategory] = useState<Category>('Screen replacement');
+  const [customItemName, setCustomItemName] = useState('');
   const [aiSuggestedCategory, setAiSuggestedCategory] = useState<{
     category: Category;
     confidence: number;
@@ -516,10 +517,11 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
     ].includes(itemCategory);
 
     const itemAdvVal = parseFloat(itemAdvanceMoney) || 0;
+    const finalCat = (itemCategory === 'Custom Name' && customItemName.trim()) ? (customItemName.trim() as Category) : itemCategory;
 
     setItems([...items, {
       id: Math.random().toString(36).substr(2, 9),
-      category: itemCategory,
+      category: finalCat,
       amount: amt,
       cost: cost,
       quantity: qty,
@@ -553,6 +555,7 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
     setItemAmount('');
     setItemCost('');
     setItemQuantity('1');
+    setCustomItemName('');
     setIsItemPreOrder(false);
     setItemAdvanceMoney('');
     setDeviceModel('');
@@ -852,6 +855,9 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
                 </div>
               </div>
 
+              {/* AI Auto-Categorization Banner */}
+              {renderAICategoryBanner()}
+
               {/* Diagnostic & Repair Checklist (Auto-Save Enabled) */}
               <div className="bg-slate-50/80 p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3.5">
                 <div className="flex items-center justify-between flex-wrap gap-2">
@@ -956,6 +962,9 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
                     </div>
                   )}
                 </div>
+
+                {/* AI Auto-Categorization Banner */}
+                {renderAICategoryBanner()}
 
                 {/* Pre-Order & Advance Money Bar */}
                 <div className={cn(
@@ -1099,6 +1108,16 @@ export default function TransactionForm({ onAdd, editingTransaction, onCancelEdi
                       <option key={cat} value={cat} className="bg-white">{cat}</option>
                     ))}
                   </select>
+
+                  {itemCategory === 'Custom Name' && (
+                    <input
+                      type="text"
+                      value={customItemName}
+                      onChange={(e) => setCustomItemName(e.target.value)}
+                      placeholder="Enter item name..."
+                      className="glass-input h-16 flex-1 px-4 text-base font-black border-amber-300 bg-amber-50/50 min-w-[140px]"
+                    />
+                  )}
 
                   <div className="relative w-24">
                     <input
